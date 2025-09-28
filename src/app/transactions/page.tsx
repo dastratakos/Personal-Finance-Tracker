@@ -17,12 +17,22 @@ import {
   MenuItem,
   OutlinedInput,
   SelectChangeEvent,
+  Snackbar,
+  Alert,
+  CircularProgress,
 } from "@mui/material";
 import {
   DataGrid,
   GridColDef,
   GridRowParams,
   GridToolbar,
+  GridRowModel,
+  GridRowModes,
+  GridRowModesModel,
+  GridActionsCellItem,
+  GridEventListener,
+  GridRowId,
+  GridRowEditStopReasons,
 } from "@mui/x-data-grid";
 import Layout from "@/components/Layout";
 import {
@@ -31,8 +41,10 @@ import {
   Download as DownloadIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  Save as SaveIcon,
+  Cancel as CancelIcon,
 } from "@mui/icons-material";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 const ITEM_HEIGHT = 48;
 const ITEM_PADDING_TOP = 8;
@@ -63,67 +75,164 @@ const categories = [
   "Transfer",
 ];
 
-const sources = ["Amex", "Wells Fargo", "Venmo", "Vanguard", "Target", "CIT"];
-
-// Mock data for demonstration
-const mockTransactions = [
-  {
-    id: 1,
-    date: "2024-01-15",
-    merchant: "Starbucks",
-    amount: -5.45,
-    source: "Amex",
-    category: "Food",
-    note: "Morning coffee",
-    isManual: false,
-  },
-  {
-    id: 2,
-    date: "2024-01-14",
-    merchant: "Whole Foods",
-    amount: -89.32,
-    source: "Wells Fargo",
-    category: "Groceries",
-    note: "Weekly groceries",
-    isManual: false,
-  },
-  {
-    id: 3,
-    date: "2024-01-13",
-    merchant: "Netflix",
-    amount: -15.99,
-    source: "Amex",
-    category: "Subscription",
-    note: "Monthly subscription",
-    isManual: false,
-  },
-  {
-    id: 4,
-    date: "2024-01-12",
-    merchant: "Gas Station",
-    amount: -42.5,
-    source: "Wells Fargo",
-    category: "Daily Transport",
-    note: "Gas fill-up",
-    isManual: false,
-  },
-  {
-    id: 5,
-    date: "2024-01-11",
-    merchant: "Amazon",
-    amount: -127.89,
-    source: "Amex",
-    category: "Technology",
-    note: "New headphones",
-    isManual: true,
-  },
+const sources = [
+  "Amex",
+  "Wells Fargo",
+  "Venmo",
+  "Vanguard",
+  "Target",
+  "CIT",
+  "Bilt",
 ];
+
+interface Transaction {
+  id: string;
+  date: string;
+  amount: number;
+  merchant?: string;
+  category?: string;
+  note?: string;
+  isManual: boolean;
+  account: {
+    name: string;
+  };
+  import?: {
+    filename: string;
+    importedAt: string;
+  };
+}
 
 export default function Transactions() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
-  const [selectedRows, setSelectedRows] = useState<number[]>([]);
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({
+    page: 0,
+    pageSize: 25,
+    total: 0,
+    pages: 0,
+  });
+  const [rowModesModel, setRowModesModel] = useState<GridRowModesModel>({});
+
+  // Fetch transactions from API
+  const fetchTransactions = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({
+        page: (pagination.page + 1).toString(),
+        limit: pagination.pageSize.toString(),
+        search: searchTerm,
+        category: selectedCategories.join(","),
+        source: selectedSources.join(","),
+      });
+
+      const response = await fetch(`/api/transactions?${params}`);
+      if (!response.ok) throw new Error("Failed to fetch transactions");
+
+      const data = await response.json();
+      setTransactions(data.transactions);
+      setPagination((prev) => ({
+        ...prev,
+        total: data.pagination.total,
+        pages: data.pagination.pages,
+      }));
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch transactions"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    pagination.page,
+    pagination.pageSize,
+    searchTerm,
+    selectedCategories,
+    selectedSources,
+  ]);
+
+  // Update transaction
+  const updateTransaction = async (
+    id: string,
+    updates: Partial<Transaction>
+  ) => {
+    try {
+      const response = await fetch("/api/transactions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, updates }),
+      });
+
+      if (!response.ok) throw new Error("Failed to update transaction");
+
+      const updatedTransaction = await response.json();
+      setTransactions((prev) =>
+        prev.map((t) => (t.id === id ? updatedTransaction : t))
+      );
+      setSuccess("Transaction updated successfully");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to update transaction"
+      );
+    }
+  };
+
+  // Delete transaction
+  const deleteTransaction = async (id: string) => {
+    try {
+      const response = await fetch(`/api/transactions?id=${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Failed to delete transaction");
+
+      setTransactions((prev) => prev.filter((t) => t.id !== id));
+      setSuccess("Transaction deleted successfully");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to delete transaction"
+      );
+    }
+  };
+
+  // Handle file upload
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setLoading(true);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error("Import failed");
+
+      const result = await response.json();
+      setSuccess(result.message);
+      fetchTransactions(); // Refresh data
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load data on mount and when filters change
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
 
   const handleCategoryChange = (event: SelectChangeEvent<string[]>) => {
     const value = event.target.value;
@@ -139,12 +248,41 @@ export default function Transactions() {
     setSelectedRows(newSelection);
   };
 
-  const handleEditTransaction = (id: number) => {
-    console.log("Edit transaction:", id);
+  const handleEditTransaction = (id: string) => {
+    setRowModesModel((prev) => ({
+      ...prev,
+      [id]: { mode: GridRowModes.Edit, fieldToFocus: "category" },
+    }));
   };
 
-  const handleDeleteTransaction = (id: number) => {
-    console.log("Delete transaction:", id);
+  const handleDeleteTransaction = (id: string) => {
+    deleteTransaction(id);
+  };
+
+  const handleRowModesModelChange = (newRowModesModel: GridRowModesModel) => {
+    setRowModesModel(newRowModesModel);
+  };
+
+  const handleRowEditStop: GridEventListener<"rowEditStop"> = (
+    params,
+    event
+  ) => {
+    if (params.reason === GridRowEditStopReasons.rowFocusOut) {
+      event.defaultMuiPrevented = true;
+    }
+  };
+
+  const processRowUpdate = async (newRow: GridRowModel) => {
+    const updatedRow = { ...newRow, isNew: false };
+    await updateTransaction(newRow.id, {
+      category: newRow.category,
+      note: newRow.note,
+    });
+    return updatedRow;
+  };
+
+  const handleProcessRowUpdateError = (error: Error) => {
+    setError(`Failed to update transaction: ${error.message}`);
   };
 
   const columns: GridColDef[] = [
@@ -159,7 +297,7 @@ export default function Transactions() {
       field: "merchant",
       headerName: "Merchant",
       width: 200,
-      editable: true,
+      editable: false,
     },
     {
       field: "amount",
@@ -171,9 +309,10 @@ export default function Transactions() {
         params.value < 0 ? "amount-negative" : "amount-positive",
     },
     {
-      field: "source",
+      field: "account",
       headerName: "Source",
       width: 120,
+      valueGetter: (params: any) => params.row.account?.name || "Unknown",
       renderCell: (params: any) => (
         <Chip
           label={params.value}
@@ -192,7 +331,7 @@ export default function Transactions() {
       valueOptions: categories,
       renderCell: (params: any) => (
         <Chip
-          label={params.value}
+          label={params.value || "Uncategorized"}
           size="small"
           color="primary"
           variant="outlined"
@@ -225,27 +364,49 @@ export default function Transactions() {
       width: 120,
       sortable: false,
       filterable: false,
-      renderCell: (params: any) => (
-        <Box sx={{ display: "flex", gap: 0.5 }}>
-          <Tooltip title="Edit">
-            <IconButton
-              size="small"
-              onClick={() => handleEditTransaction(params.row.id)}
-            >
-              <EditIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Delete">
-            <IconButton
-              size="small"
-              color="error"
-              onClick={() => handleDeleteTransaction(params.row.id)}
-            >
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      ),
+      type: "actions",
+      getActions: (params: any) => {
+        const isInEditMode =
+          rowModesModel[params.id]?.mode === GridRowModes.Edit;
+
+        if (isInEditMode) {
+          return [
+            <GridActionsCellItem
+              icon={<SaveIcon />}
+              label="Save"
+              onClick={() => {
+                setRowModesModel((prev) => ({
+                  ...prev,
+                  [params.id]: { mode: GridRowModes.View },
+                }));
+              }}
+            />,
+            <GridActionsCellItem
+              icon={<CancelIcon />}
+              label="Cancel"
+              onClick={() => {
+                setRowModesModel((prev) => ({
+                  ...prev,
+                  [params.id]: { mode: GridRowModes.View },
+                }));
+              }}
+            />,
+          ];
+        }
+
+        return [
+          <GridActionsCellItem
+            icon={<EditIcon />}
+            label="Edit"
+            onClick={() => handleEditTransaction(params.id)}
+          />,
+          <GridActionsCellItem
+            icon={<DeleteIcon />}
+            label="Delete"
+            onClick={() => handleDeleteTransaction(params.id)}
+          />,
+        ];
+      },
     },
   ];
 
@@ -339,13 +500,24 @@ export default function Transactions() {
               </FormControl>
 
               <Box sx={{ ml: "auto", display: "flex", gap: 1 }}>
-                <Button
-                  variant="contained"
-                  startIcon={<UploadIcon />}
-                  sx={{ minWidth: 120 }}
-                >
-                  Import CSV
-                </Button>
+                <input
+                  accept=".csv"
+                  style={{ display: "none" }}
+                  id="csv-upload"
+                  type="file"
+                  onChange={handleFileUpload}
+                />
+                <label htmlFor="csv-upload">
+                  <Button
+                    variant="contained"
+                    startIcon={<UploadIcon />}
+                    component="span"
+                    sx={{ minWidth: 120 }}
+                    disabled={loading}
+                  >
+                    Import CSV
+                  </Button>
+                </label>
                 <Button
                   variant="outlined"
                   startIcon={<DownloadIcon />}
@@ -361,44 +533,68 @@ export default function Transactions() {
         {/* Transactions DataGrid */}
         <Card>
           <Box sx={{ height: 600, width: "100%" }}>
-            <DataGrid
-              rows={mockTransactions}
-              columns={columns}
-              initialState={{
-                pagination: {
-                  paginationModel: { page: 0, pageSize: 25 },
-                },
-              }}
-              pageSizeOptions={[10, 25, 50, 100]}
-              checkboxSelection
-              disableRowSelectionOnClick
-              onRowSelectionModelChange={handleRowSelectionChange}
-              slots={{
-                toolbar: GridToolbar,
-              }}
-              slotProps={{
-                toolbar: {
-                  showQuickFilter: true,
-                  quickFilterProps: { debounceMs: 500 },
-                },
-              }}
-              sx={{
-                "& .amount-negative": {
-                  color: "error.main",
-                  fontWeight: 600,
-                },
-                "& .amount-positive": {
-                  color: "success.main",
-                  fontWeight: 600,
-                },
-                "& .MuiDataGrid-cell:focus": {
-                  outline: "none",
-                },
-                "& .MuiDataGrid-row:hover": {
-                  backgroundColor: "action.hover",
-                },
-              }}
-            />
+            {loading ? (
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  height: "100%",
+                }}
+              >
+                <CircularProgress />
+              </Box>
+            ) : (
+              <DataGrid
+                rows={transactions}
+                columns={columns}
+                rowModesModel={rowModesModel}
+                onRowModesModelChange={handleRowModesModelChange}
+                onRowEditStop={handleRowEditStop}
+                processRowUpdate={processRowUpdate}
+                onProcessRowUpdateError={handleProcessRowUpdateError}
+                paginationModel={{
+                  page: pagination.page,
+                  pageSize: pagination.pageSize,
+                }}
+                onPaginationModelChange={(model) => {
+                  setPagination((prev) => ({
+                    ...prev,
+                    page: model.page,
+                    pageSize: model.pageSize,
+                  }));
+                }}
+                pageSizeOptions={[10, 25, 50, 100]}
+                checkboxSelection
+                disableRowSelectionOnClick
+                onRowSelectionModelChange={handleRowSelectionChange}
+                slots={{
+                  toolbar: GridToolbar,
+                }}
+                slotProps={{
+                  toolbar: {
+                    showQuickFilter: true,
+                    quickFilterProps: { debounceMs: 500 },
+                  },
+                }}
+                sx={{
+                  "& .amount-negative": {
+                    color: "error.main",
+                    fontWeight: 600,
+                  },
+                  "& .amount-positive": {
+                    color: "success.main",
+                    fontWeight: 600,
+                  },
+                  "& .MuiDataGrid-cell:focus": {
+                    outline: "none",
+                  },
+                  "& .MuiDataGrid-row:hover": {
+                    backgroundColor: "action.hover",
+                  },
+                }}
+              />
+            )}
           </Box>
         </Card>
 
@@ -423,6 +619,27 @@ export default function Transactions() {
             </CardContent>
           </Card>
         )}
+
+        {/* Snackbar notifications */}
+        <Snackbar
+          open={!!error}
+          autoHideDuration={6000}
+          onClose={() => setError(null)}
+        >
+          <Alert onClose={() => setError(null)} severity="error">
+            {error}
+          </Alert>
+        </Snackbar>
+
+        <Snackbar
+          open={!!success}
+          autoHideDuration={6000}
+          onClose={() => setSuccess(null)}
+        >
+          <Alert onClose={() => setSuccess(null)} severity="success">
+            {success}
+          </Alert>
+        </Snackbar>
       </Container>
     </Layout>
   );

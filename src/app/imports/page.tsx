@@ -28,6 +28,8 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  CircularProgress,
+  Snackbar,
 } from "@mui/material";
 import Layout from "@/components/Layout";
 import {
@@ -43,7 +45,16 @@ import {
   FileUpload as FileUploadIcon,
   Description as DescriptionIcon,
 } from "@mui/icons-material";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+interface ImportRecord {
+  id: string;
+  filename: string;
+  checksum: string;
+  source: string;
+  importedAt: string;
+  transactionCount: number;
+}
 
 const supportedSources = [
   {
@@ -128,10 +139,34 @@ const mockImports = [
 ];
 
 export default function Imports() {
+  const [imports, setImports] = useState<ImportRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [openUploadDialog, setOpenUploadDialog] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Fetch imports list
+  const fetchImports = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/imports");
+      if (!response.ok) throw new Error("Failed to fetch imports");
+
+      const data = await response.json();
+      setImports(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch imports");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchImports();
+  }, []);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -139,25 +174,46 @@ export default function Imports() {
     }
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!selectedFiles) return;
 
-    setIsUploading(true);
-    setUploadProgress(0);
+    try {
+      setIsUploading(true);
+      setUploadProgress(0);
+      setError(null);
 
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsUploading(false);
-          setOpenUploadDialog(false);
-          setSelectedFiles(null);
-          return 100;
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch("/api/import", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Upload failed");
         }
-        return prev + 10;
-      });
-    }, 200);
+
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.message);
+        }
+
+        setUploadProgress(((i + 1) / selectedFiles.length) * 100);
+      }
+
+      setSuccess(`Successfully imported ${selectedFiles.length} file(s)`);
+      setOpenUploadDialog(false);
+      setSelectedFiles(null);
+      fetchImports(); // Refresh imports list
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -268,7 +324,18 @@ export default function Imports() {
             }
           />
           <CardContent>
-            {mockImports.length > 0 ? (
+            {loading ? (
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  py: 4,
+                }}
+              >
+                <CircularProgress />
+              </Box>
+            ) : imports.length > 0 ? (
               <TableContainer component={Paper} variant="outlined">
                 <Table>
                   <TableHead>
@@ -276,14 +343,13 @@ export default function Imports() {
                       <TableCell>File</TableCell>
                       <TableCell>Source</TableCell>
                       <TableCell>Status</TableCell>
-                      <TableCell>Imported</TableCell>
-                      <TableCell>Skipped</TableCell>
+                      <TableCell>Transactions</TableCell>
                       <TableCell>Date</TableCell>
                       <TableCell>Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {mockImports.map((importItem) => (
+                    {imports.map((importItem) => (
                       <TableRow key={importItem.id}>
                         <TableCell>
                           <Box
@@ -314,23 +380,18 @@ export default function Imports() {
                               gap: 1,
                             }}
                           >
-                            {getStatusIcon(importItem.status)}
+                            <CheckCircleIcon color="success" />
                             <Typography
                               variant="body2"
                               sx={{ textTransform: "capitalize" }}
                             >
-                              {importItem.status}
+                              Completed
                             </Typography>
                           </Box>
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2" color="success.main">
-                            {importItem.rowsImported} rows
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" color="warning.main">
-                            {importItem.rowsSkipped} rows
+                            {importItem.transactionCount} transactions
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -491,6 +552,27 @@ export default function Imports() {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Snackbar notifications */}
+        <Snackbar
+          open={!!error}
+          autoHideDuration={6000}
+          onClose={() => setError(null)}
+        >
+          <Alert onClose={() => setError(null)} severity="error">
+            {error}
+          </Alert>
+        </Snackbar>
+
+        <Snackbar
+          open={!!success}
+          autoHideDuration={6000}
+          onClose={() => setSuccess(null)}
+        >
+          <Alert onClose={() => setSuccess(null)} severity="success">
+            {success}
+          </Alert>
+        </Snackbar>
       </Container>
     </Layout>
   );

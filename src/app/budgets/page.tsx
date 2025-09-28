@@ -24,6 +24,9 @@ import {
   FormControlLabel,
   Grid,
   Avatar,
+  CircularProgress,
+  Alert,
+  Snackbar,
 } from "@mui/material";
 import Layout from "@/components/Layout";
 import {
@@ -35,7 +38,22 @@ import {
   AttachMoney as AttachMoneyIcon,
   CalendarToday as CalendarIcon,
 } from "@mui/icons-material";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+interface Budget {
+  id: string;
+  category: string;
+  amount: number;
+  startDate: string;
+  endDate?: string;
+  createdAt: string;
+}
+
+interface BudgetWithSpend extends Budget {
+  actualSpend: number;
+  remaining: number;
+  percentage: number;
+}
 
 const categories = [
   "Housing",
@@ -55,29 +73,160 @@ const categories = [
 ];
 
 export default function Budgets() {
+  const [budgets, setBudgets] = useState<BudgetWithSpend[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
-  const [editingBudget, setEditingBudget] = useState<any>(null);
+  const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
+  const [formData, setFormData] = useState({
+    category: "",
+    amount: "",
+    startDate: "",
+    endDate: "",
+    isRecurring: false,
+  });
 
-  const handleOpenDialog = (budget?: any) => {
+  // Fetch budgets and calculate actual spend
+  const fetchBudgets = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/budgets");
+      if (!response.ok) throw new Error("Failed to fetch budgets");
+
+      const budgetsData: Budget[] = await response.json();
+
+      // Calculate actual spend for each budget
+      const budgetsWithSpend = await Promise.all(
+        budgetsData.map(async (budget) => {
+          const currentMonth = new Date().toISOString().substring(0, 7);
+          const response = await fetch(
+            `/api/transactions?category=${budget.category}&startDate=${currentMonth}-01&endDate=${currentMonth}-31`
+          );
+          const data = await response.json();
+
+          const actualSpend = data.transactions
+            .filter((t: any) => t.amount < 0)
+            .reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0);
+
+          const remaining = budget.amount - actualSpend;
+          const percentage = (actualSpend / budget.amount) * 100;
+
+          return {
+            ...budget,
+            actualSpend,
+            remaining,
+            percentage: Math.min(percentage, 100),
+          };
+        })
+      );
+
+      setBudgets(budgetsWithSpend);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch budgets");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBudgets();
+  }, []);
+
+  // Create or update budget
+  const saveBudget = async () => {
+    try {
+      const budgetData = {
+        category: formData.category,
+        amount: parseFloat(formData.amount),
+        startDate: formData.startDate,
+        endDate: formData.endDate || null,
+      };
+
+      const response = await fetch("/api/budgets", {
+        method: editingBudget ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          editingBudget
+            ? { id: editingBudget.id, updates: budgetData }
+            : budgetData
+        ),
+      });
+
+      if (!response.ok) throw new Error("Failed to save budget");
+
+      setSuccess(
+        editingBudget
+          ? "Budget updated successfully"
+          : "Budget created successfully"
+      );
+      setOpenDialog(false);
+      resetForm();
+      fetchBudgets();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save budget");
+    }
+  };
+
+  // Delete budget
+  const deleteBudget = async (id: string) => {
+    try {
+      const response = await fetch(`/api/budgets?id=${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Failed to delete budget");
+
+      setSuccess("Budget deleted successfully");
+      fetchBudgets();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete budget");
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      category: "",
+      amount: "",
+      startDate: "",
+      endDate: "",
+      isRecurring: false,
+    });
+    setEditingBudget(null);
+  };
+
+  const handleOpenDialog = (budget?: Budget) => {
+    if (budget) {
+      setFormData({
+        category: budget.category,
+        amount: budget.amount.toString(),
+        startDate: budget.startDate,
+        endDate: budget.endDate || "",
+        isRecurring: false,
+      });
+    } else {
+      resetForm();
+    }
     setEditingBudget(budget || null);
     setOpenDialog(true);
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
-    setEditingBudget(null);
+    resetForm();
+  };
+
+  const handleInputChange = (field: string, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const getProgressColor = (percentage: number) => {
     if (percentage >= 100) return "error";
     if (percentage >= 80) return "warning";
     return "success";
-  };
-
-  const getProgressIcon = (percentage: number) => {
-    if (percentage >= 100) return <TrendingUpIcon color="error" />;
-    if (percentage >= 80) return <TrendingDownIcon color="warning" />;
-    return <TrendingUpIcon color="success" />;
   };
 
   return (
@@ -94,157 +243,183 @@ export default function Budgets() {
             Budgets
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            Set and track your monthly spending limits by category.
+            Set and monitor your spending budgets to stay on track with your
+            financial goals.
+          </Typography>
+        </Box>
+
+        {/* Action Bar */}
+        <Box
+          sx={{
+            mb: 4,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Typography variant="h6" color="text.secondary">
+            {budgets.length} budget{budgets.length !== 1 ? "s" : ""} set
           </Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => handleOpenDialog()}
-            sx={{ mb: 2 }}
+            sx={{ minWidth: 140 }}
           >
             Create Budget
           </Button>
         </Box>
 
-        {/* Budget Cards */}
-        <Grid container spacing={3}>
-          {categories.slice(0, 6).map((category, index) => {
-            const budgetAmount = 1000 + index * 200;
-            const spentAmount = Math.floor(
-              budgetAmount * (0.3 + Math.random() * 0.7)
-            );
-            const percentage = Math.round((spentAmount / budgetAmount) * 100);
+        {/* Loading State */}
+        {loading && (
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "50vh",
+            }}
+          >
+            <CircularProgress />
+          </Box>
+        )}
 
-            return (
-              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={category}>
-                <Card sx={{ height: "100%" }}>
-                  <CardHeader
-                    avatar={
-                      <Avatar sx={{ bgcolor: "primary.main" }}>
-                        <AttachMoneyIcon />
-                      </Avatar>
-                    }
-                    title={category}
-                    action={
-                      <Box sx={{ display: "flex", gap: 1 }}>
-                        <IconButton
-                          size="small"
-                          onClick={() =>
-                            handleOpenDialog({ category, amount: budgetAmount })
-                          }
+        {/* Error State */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+
+        {/* Budget Cards */}
+        {!loading && (
+          <Grid container spacing={3}>
+            {budgets.length === 0 ? (
+              <Grid size={12}>
+                <Card>
+                  <CardContent sx={{ textAlign: "center", py: 4 }}>
+                    <Typography
+                      variant="h6"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      No budgets set
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 3 }}
+                    >
+                      Create your first budget to start tracking your spending.
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      startIcon={<AddIcon />}
+                      onClick={() => handleOpenDialog()}
+                    >
+                      Create Budget
+                    </Button>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ) : (
+              budgets.map((budget) => (
+                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={budget.id}>
+                  <Card sx={{ height: "100%" }}>
+                    <CardHeader
+                      avatar={
+                        <Avatar sx={{ bgcolor: "primary.main" }}>
+                          <AttachMoneyIcon />
+                        </Avatar>
+                      }
+                      title={budget.category}
+                      action={
+                        <Box sx={{ display: "flex", gap: 1 }}>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleOpenDialog(budget)}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => deleteBudget(budget.id)}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Box>
+                      }
+                    />
+                    <CardContent>
+                      <Box sx={{ mb: 2 }}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            mb: 1,
+                          }}
                         >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" color="error">
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
+                          <Typography variant="h6" color="text.secondary">
+                            ${budget.actualSpend.toLocaleString()}
+                          </Typography>
+                          <Typography variant="h6" color="text.primary">
+                            ${budget.amount.toLocaleString()}
+                          </Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={budget.percentage}
+                          color={getProgressColor(budget.percentage)}
+                          sx={{ height: 8, borderRadius: 4 }}
+                        />
                       </Box>
-                    }
-                  />
-                  <CardContent>
-                    <Box sx={{ mb: 2 }}>
                       <Box
                         sx={{
                           display: "flex",
                           justifyContent: "space-between",
-                          mb: 1,
+                          alignItems: "center",
                         }}
                       >
-                        <Typography variant="body2" color="text.secondary">
-                          Spent this month
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {percentage}%
-                        </Typography>
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
+                          {budget.percentage >= 100 ? (
+                            <TrendingUpIcon color="error" fontSize="small" />
+                          ) : (
+                            <TrendingDownIcon
+                              color="success"
+                              fontSize="small"
+                            />
+                          )}
+                          <Typography
+                            variant="body2"
+                            color={
+                              budget.percentage >= 100
+                                ? "error.main"
+                                : "success.main"
+                            }
+                          >
+                            {budget.percentage.toFixed(1)}% used
+                          </Typography>
+                        </Box>
+                        <Chip
+                          label={`$${budget.remaining.toFixed(2)} left`}
+                          size="small"
+                          color={budget.remaining < 0 ? "error" : "success"}
+                          variant="outlined"
+                        />
                       </Box>
-                      <LinearProgress
-                        variant="determinate"
-                        value={Math.min(percentage, 100)}
-                        color={getProgressColor(percentage)}
-                        sx={{ height: 8, borderRadius: 4 }}
-                      />
-                    </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))
+            )}
+          </Grid>
+        )}
 
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        mb: 2,
-                      }}
-                    >
-                      <Box>
-                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                          ${spentAmount.toLocaleString()}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          of ${budgetAmount.toLocaleString()}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ textAlign: "right" }}>
-                        {getProgressIcon(percentage)}
-                      </Box>
-                    </Box>
-
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <Chip
-                        label={`$${(
-                          budgetAmount - spentAmount
-                        ).toLocaleString()} left`}
-                        size="small"
-                        color={
-                          budgetAmount - spentAmount > 0 ? "success" : "error"
-                        }
-                        variant="outlined"
-                      />
-                      <Typography variant="caption" color="text.secondary">
-                        Monthly budget
-                      </Typography>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            );
-          })}
-        </Grid>
-
-        {/* Empty State for remaining categories */}
-        <Card sx={{ mt: 3 }}>
-          <CardContent sx={{ textAlign: "center", py: 6 }}>
-            <Avatar
-              sx={{
-                bgcolor: "grey.100",
-                width: 64,
-                height: 64,
-                mx: "auto",
-                mb: 2,
-              }}
-            >
-              <AttachMoneyIcon sx={{ fontSize: 32, color: "grey.400" }} />
-            </Avatar>
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              No budgets set for remaining categories
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Create budgets for {categories.slice(6).join(", ")} and more.
-            </Typography>
-            <Button
-              variant="outlined"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenDialog()}
-            >
-              Create More Budgets
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Budget Creation/Edit Dialog */}
+        {/* Budget Dialog */}
         <Dialog
           open={openDialog}
           onClose={handleCloseDialog}
@@ -255,12 +430,16 @@ export default function Budgets() {
             {editingBudget ? "Edit Budget" : "Create New Budget"}
           </DialogTitle>
           <DialogContent>
-            <Box
-              sx={{ display: "flex", flexDirection: "column", gap: 3, pt: 1 }}
-            >
-              <FormControl fullWidth>
+            <Box sx={{ pt: 1 }}>
+              <FormControl fullWidth sx={{ mb: 3 }}>
                 <InputLabel>Category</InputLabel>
-                <Select value={editingBudget?.category || ""} label="Category">
+                <Select
+                  value={formData.category}
+                  onChange={(e) =>
+                    handleInputChange("category", e.target.value)
+                  }
+                  label="Category"
+                >
                   {categories.map((category) => (
                     <MenuItem key={category} value={category}>
                       {category}
@@ -271,9 +450,11 @@ export default function Budgets() {
 
               <TextField
                 fullWidth
-                label="Monthly Amount"
+                label="Amount"
                 type="number"
-                value={editingBudget?.amount || ""}
+                value={formData.amount}
+                onChange={(e) => handleInputChange("amount", e.target.value)}
+                sx={{ mb: 3 }}
                 InputProps={{
                   startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
                 }}
@@ -283,28 +464,63 @@ export default function Budgets() {
                 fullWidth
                 label="Start Date"
                 type="date"
+                value={formData.startDate}
+                onChange={(e) => handleInputChange("startDate", e.target.value)}
                 InputLabelProps={{ shrink: true }}
-                defaultValue={new Date().toISOString().split("T")[0]}
+                sx={{ mb: 3 }}
+              />
+
+              <TextField
+                fullWidth
+                label="End Date (Optional)"
+                type="date"
+                value={formData.endDate}
+                onChange={(e) => handleInputChange("endDate", e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                sx={{ mb: 3 }}
               />
 
               <FormControlLabel
-                control={<Switch defaultChecked />}
-                label="Recurring monthly budget"
-              />
-
-              <FormControlLabel
-                control={<Switch />}
-                label="Apply to future months"
+                control={
+                  <Switch
+                    checked={formData.isRecurring}
+                    onChange={(e) =>
+                      handleInputChange("isRecurring", e.target.checked)
+                    }
+                  />
+                }
+                label="Recurring monthly"
               />
             </Box>
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseDialog}>Cancel</Button>
-            <Button variant="contained" onClick={handleCloseDialog}>
-              {editingBudget ? "Update Budget" : "Create Budget"}
+            <Button onClick={saveBudget} variant="contained">
+              {editingBudget ? "Update" : "Create"}
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Snackbar notifications */}
+        <Snackbar
+          open={!!error}
+          autoHideDuration={6000}
+          onClose={() => setError(null)}
+        >
+          <Alert onClose={() => setError(null)} severity="error">
+            {error}
+          </Alert>
+        </Snackbar>
+
+        <Snackbar
+          open={!!success}
+          autoHideDuration={6000}
+          onClose={() => setSuccess(null)}
+        >
+          <Alert onClose={() => setSuccess(null)} severity="success">
+            {success}
+          </Alert>
+        </Snackbar>
       </Container>
     </Layout>
   );

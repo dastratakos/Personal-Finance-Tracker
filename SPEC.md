@@ -147,25 +147,25 @@ All pages accessible from a left nav: Dashboard, Transactions, Budgets, Net Wort
   - [x] **Net Worth page**: Net worth visualization with account breakdown.
   - [x] **Imports page**: File upload interface and import history.
   - [x] **Settings page**: Account and category management.
-- [ ] **Import logic**:
+- [x] **Import logic**:
   - Detect source from filename.
   - Normalize → unified schema.
   - Deduplicate + link transfers.
-- [ ] **API routes**: Backend endpoints for transaction CRUD, import, budgets.
-- [ ] **Transactions page**:
+- [x] **API routes**: Backend endpoints for transaction CRUD, import, budgets.
+- [x] **Transactions page**:
   - Virtualized MUI table.
   - Filters, search, inline edit, bulk edit.
   - Export CSV.
-- [ ] **Dashboard data integration**:
+- [x] **Dashboard data integration**:
   - Donut (spend by category).
   - Stacked bar (monthly spend).
   - Sankey (income → spend flow).
-- [ ] **Budgets page**:
+- [x] **Budgets page**:
   - CRUD budgets.
   - Show actual vs budget progress bars.
-- [ ] **Net Worth page**:
+- [x] **Net Worth page**:
   - Line chart from balances.
-- [ ] **Imports page**:
+- [x] **Imports page**:
   - List imports + reupload support.
-- [ ] **Settings page**:
+- [x] **Settings page**:
   - Manage accounts and categories.

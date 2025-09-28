@@ -29,6 +29,8 @@ import {
   Switch,
   FormControlLabel,
   Alert,
+  CircularProgress,
+  Snackbar,
 } from "@mui/material";
 import Layout from "@/components/Layout";
 import {
@@ -37,7 +39,14 @@ import {
   Delete as DeleteIcon,
   AccountBalance as AccountBalanceIcon,
 } from "@mui/icons-material";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+interface Account {
+  id: string;
+  name: string;
+  accountType?: string;
+  createdAt: string;
+}
 
 const accountTypes = ["Bank", "Credit Card", "Investment", "Other"];
 
@@ -68,20 +77,113 @@ const defaultCategories = [
 ];
 
 export default function Settings() {
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [openAccountDialog, setOpenAccountDialog] = useState(false);
   const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
-  const [editingAccount, setEditingAccount] = useState<any>(null);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [editingCategory, setEditingCategory] = useState<any>(null);
   const [newCategory, setNewCategory] = useState("");
+  const [accountForm, setAccountForm] = useState({
+    name: "",
+    type: "",
+  });
 
-  const handleOpenAccountDialog = (account?: any) => {
+  // Fetch accounts
+  const fetchAccounts = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/accounts");
+      if (!response.ok) throw new Error("Failed to fetch accounts");
+
+      const data = await response.json();
+      setAccounts(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch accounts");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
+
+  // Create or update account
+  const saveAccount = async () => {
+    try {
+      const accountData = {
+        name: accountForm.name,
+        accountType: accountForm.type,
+      };
+
+      const response = await fetch("/api/accounts", {
+        method: editingAccount ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          editingAccount
+            ? { id: editingAccount.id, updates: accountData }
+            : accountData
+        ),
+      });
+
+      if (!response.ok) throw new Error("Failed to save account");
+
+      setSuccess(
+        editingAccount
+          ? "Account updated successfully"
+          : "Account created successfully"
+      );
+      setOpenAccountDialog(false);
+      resetForm();
+      fetchAccounts();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save account");
+    }
+  };
+
+  // Delete account
+  const deleteAccount = async (id: string) => {
+    try {
+      const response = await fetch(`/api/accounts?id=${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Failed to delete account");
+
+      setSuccess("Account deleted successfully");
+      fetchAccounts();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete account");
+    }
+  };
+
+  const resetForm = () => {
+    setAccountForm({
+      name: "",
+      type: "",
+    });
+    setEditingAccount(null);
+  };
+
+  const handleOpenAccountDialog = (account?: Account) => {
+    if (account) {
+      setAccountForm({
+        name: account.name,
+        type: account.accountType || "",
+      });
+    } else {
+      resetForm();
+    }
     setEditingAccount(account || null);
     setOpenAccountDialog(true);
   };
 
   const handleCloseAccountDialog = () => {
     setOpenAccountDialog(false);
-    setEditingAccount(null);
+    resetForm();
   };
 
   const handleOpenCategoryDialog = (category?: string) => {
@@ -148,58 +250,95 @@ export default function Settings() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {mockAccounts.map((account) => (
-                      <TableRow key={account.id}>
-                        <TableCell>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 1,
-                            }}
-                          >
-                            <AccountBalanceIcon color="action" />
-                            <Typography variant="body2">
-                              {account.name}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={account.type}
-                            size="small"
-                            variant="outlined"
-                            color={
-                              account.type === "Bank"
-                                ? "success"
-                                : account.type === "Credit Card"
-                                ? "error"
-                                : "default"
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={account.isActive ? "Active" : "Inactive"}
-                            size="small"
-                            color={account.isActive ? "success" : "default"}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: "flex", gap: 0.5 }}>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleOpenAccountDialog(account)}
-                            >
-                              <EditIcon />
-                            </IconButton>
-                            <IconButton size="small" color="error">
-                              <DeleteIcon />
-                            </IconButton>
-                          </Box>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={4}
+                          sx={{ textAlign: "center", py: 4 }}
+                        >
+                          <CircularProgress />
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : accounts.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={4}
+                          sx={{ textAlign: "center", py: 4 }}
+                        >
+                          <Typography variant="body2" color="text.secondary">
+                            No accounts found. Create your first account.
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      accounts.map((account) => (
+                        <TableRow key={account.id}>
+                          <TableCell>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                              }}
+                            >
+                              <AccountBalanceIcon color="action" />
+                              <Typography variant="body2">
+                                {account.name}
+                              </Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={account.accountType || "Other"}
+                              size="small"
+                              variant="outlined"
+                              color={
+                                account.accountType === "bank"
+                                  ? "success"
+                                  : account.accountType === "credit_card"
+                                  ? "error"
+                                  : account.accountType === "investment"
+                                  ? "info"
+                                  : "default"
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label="Active"
+                              size="small"
+                              color="success"
+                              variant="outlined"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Box sx={{ display: "flex", gap: 0.5 }}>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenAccountDialog(account)}
+                              >
+                                <EditIcon />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => {
+                                  if (
+                                    window.confirm(
+                                      `Are you sure you want to delete ${account.name}?`
+                                    )
+                                  ) {
+                                    deleteAccount(account.id);
+                                  }
+                                }}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </TableContainer>
@@ -263,14 +402,23 @@ export default function Settings() {
               <TextField
                 fullWidth
                 label="Account Name"
-                defaultValue={editingAccount?.name || ""}
+                value={accountForm.name}
+                onChange={(e) =>
+                  setAccountForm((prev) => ({ ...prev, name: e.target.value }))
+                }
                 placeholder="e.g., Wells Fargo Checking"
               />
 
               <FormControl fullWidth>
                 <InputLabel>Account Type</InputLabel>
                 <Select
-                  defaultValue={editingAccount?.type || ""}
+                  value={accountForm.type}
+                  onChange={(e) =>
+                    setAccountForm((prev) => ({
+                      ...prev,
+                      type: e.target.value,
+                    }))
+                  }
                   label="Account Type"
                 >
                   {accountTypes.map((type) => (
@@ -282,16 +430,14 @@ export default function Settings() {
               </FormControl>
 
               <FormControlLabel
-                control={
-                  <Switch defaultChecked={editingAccount?.isActive ?? true} />
-                }
+                control={<Switch defaultChecked={true} />}
                 label="Active account"
               />
             </Box>
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseAccountDialog}>Cancel</Button>
-            <Button variant="contained" onClick={handleCloseAccountDialog}>
+            <Button variant="contained" onClick={saveAccount}>
               {editingAccount ? "Update Account" : "Add Account"}
             </Button>
           </DialogActions>
@@ -334,6 +480,27 @@ export default function Settings() {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Snackbar notifications */}
+        <Snackbar
+          open={!!error}
+          autoHideDuration={6000}
+          onClose={() => setError(null)}
+        >
+          <Alert onClose={() => setError(null)} severity="error">
+            {error}
+          </Alert>
+        </Snackbar>
+
+        <Snackbar
+          open={!!success}
+          autoHideDuration={6000}
+          onClose={() => setSuccess(null)}
+        >
+          <Alert onClose={() => setSuccess(null)} severity="success">
+            {success}
+          </Alert>
+        </Snackbar>
       </Container>
     </Layout>
   );

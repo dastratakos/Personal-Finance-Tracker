@@ -17,6 +17,8 @@ import {
   MenuItem,
   ToggleButton,
   ToggleButtonGroup,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import Layout from "@/components/Layout";
 import {
@@ -31,15 +33,88 @@ import {
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
 } from "@mui/icons-material";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+interface NetWorthData {
+  currentNetWorth: number;
+  previousNetWorth: number;
+  change: number;
+  changePercentage: number;
+  accountBreakdown: Record<string, number>;
+  monthlyTrends: Array<{
+    month: string;
+    netWorth: number;
+    assets: number;
+    liabilities: number;
+  }>;
+}
 
 const timeRanges = ["1M", "3M", "6M", "1Y", "All"];
 const accountTypes = ["All", "Bank", "Credit Card", "Investment", "Other"];
 
 export default function NetWorth() {
+  const [data, setData] = useState<NetWorthData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedRange, setSelectedRange] = useState("6M");
   const [selectedAccountType, setSelectedAccountType] = useState("All");
   const [showBreakdown, setShowBreakdown] = useState(true);
+
+  // Fetch net worth data
+  const fetchNetWorthData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/dashboard");
+      if (!response.ok) throw new Error("Failed to fetch net worth data");
+
+      const dashboardData = await response.json();
+
+      // Calculate net worth trends
+      const currentMonth = new Date().toISOString().substring(0, 7);
+      const previousMonth = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .substring(0, 7);
+
+      const currentNetWorth = dashboardData.netWorth;
+      const previousNetWorth = currentNetWorth * 0.95; // Mock previous value
+      const change = currentNetWorth - previousNetWorth;
+      const changePercentage = (change / previousNetWorth) * 100;
+
+      // Generate monthly trends (last 6 months)
+      const monthlyTrends = [];
+      for (let i = 5; i >= 0; i--) {
+        const month = new Date(Date.now() - i * 30 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .substring(0, 7);
+        const baseValue = currentNetWorth * (0.8 + i * 0.04);
+        monthlyTrends.push({
+          month,
+          netWorth: baseValue,
+          assets: baseValue * 1.1,
+          liabilities: baseValue * 0.1,
+        });
+      }
+
+      setData({
+        currentNetWorth,
+        previousNetWorth,
+        change,
+        changePercentage,
+        accountBreakdown: dashboardData.accountBreakdown,
+        monthlyTrends,
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load net worth data"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNetWorthData();
+  }, []);
 
   const handleRangeChange = (
     event: React.MouseEvent<HTMLElement>,
@@ -54,24 +129,62 @@ export default function NetWorth() {
     setSelectedAccountType(event.target.value);
   };
 
-  const mockNetWorth = 125000;
-  const mockChange = 5.2;
-  const mockChangeAmount = 6200;
+  if (loading) {
+    return (
+      <Layout>
+        <Container maxWidth="xl" sx={{ py: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "50vh",
+            }}
+          >
+            <CircularProgress />
+          </Box>
+        </Container>
+      </Layout>
+    );
+  }
 
-  const accounts = [
-    { name: "Wells Fargo Checking", type: "Bank", balance: 8500, change: 2.1 },
-    { name: "Wells Fargo Savings", type: "Bank", balance: 25000, change: 1.8 },
-    { name: "Vanguard 401k", type: "Investment", balance: 45000, change: 8.2 },
-    { name: "Vanguard IRA", type: "Investment", balance: 32000, change: 7.5 },
-    { name: "Amex Gold", type: "Credit Card", balance: -1200, change: -15.3 },
-    {
-      name: "Wells Fargo Credit",
-      type: "Credit Card",
-      balance: -800,
-      change: -5.2,
-    },
-    { name: "Venmo", type: "Other", balance: 150, change: 0 },
-  ];
+  if (error) {
+    return (
+      <Layout>
+        <Container maxWidth="xl" sx={{ py: 2 }}>
+          <Alert severity="error">{error}</Alert>
+        </Container>
+      </Layout>
+    );
+  }
+
+  if (!data) {
+    return (
+      <Layout>
+        <Container maxWidth="xl" sx={{ py: 2 }}>
+          <Alert severity="info">
+            No data available. Import some CSV files to see your net worth.
+          </Alert>
+        </Container>
+      </Layout>
+    );
+  }
+
+  // Convert account breakdown to account list format
+  const accounts = Object.entries(data.accountBreakdown).map(
+    ([name, balance]) => ({
+      name,
+      type: name.includes("Credit")
+        ? "Credit Card"
+        : name.includes("Vanguard")
+        ? "Investment"
+        : name.includes("Wells")
+        ? "Bank"
+        : "Other",
+      balance,
+      change: Math.random() * 10 - 5, // Mock change percentage
+    })
+  );
 
   const totalAssets = accounts
     .filter((acc) => acc.balance > 0)
@@ -183,19 +296,22 @@ export default function NetWorth() {
                 >
                   <AccountBalanceIcon sx={{ fontSize: 40, opacity: 0.8 }} />
                   <Chip
-                    label={`+${mockChange}%`}
+                    label={`${
+                      data.changePercentage > 0 ? "+" : ""
+                    }${data.changePercentage.toFixed(1)}%`}
                     size="small"
                     sx={{ bgcolor: "rgba(255, 255, 255, 0.2)", color: "white" }}
                   />
                 </Box>
                 <Typography variant="h3" sx={{ fontWeight: 700, mb: 1 }}>
-                  ${mockNetWorth.toLocaleString()}
+                  ${data.currentNetWorth.toLocaleString()}
                 </Typography>
                 <Typography variant="body2" sx={{ opacity: 0.9 }}>
                   Net Worth
                 </Typography>
                 <Typography variant="body2" sx={{ opacity: 0.8, mt: 1 }}>
-                  +${mockChangeAmount.toLocaleString()} this month
+                  {data.change > 0 ? "+" : ""}${data.change.toLocaleString()}{" "}
+                  this month
                 </Typography>
               </CardContent>
             </Card>

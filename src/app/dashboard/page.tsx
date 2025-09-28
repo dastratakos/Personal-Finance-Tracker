@@ -11,6 +11,8 @@ import {
   Chip,
   IconButton,
   Tooltip,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import Layout from "@/components/Layout";
@@ -24,8 +26,90 @@ import {
   Refresh as RefreshIcon,
   Download as DownloadIcon,
 } from "@mui/icons-material";
+import { useState, useEffect } from "react";
+
+interface DashboardData {
+  netWorth: number;
+  monthlySpend: number;
+  topCategories: Array<{ category: string; amount: number }>;
+  spendByCategory: Record<string, number>;
+  monthlyTrends: Array<{
+    month: string;
+    spend: number;
+    income: number;
+    net: number;
+  }>;
+  accountBreakdown: Record<string, number>;
+  totalTransactions: number;
+}
 
 export default function Dashboard() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/dashboard");
+      if (!response.ok) throw new Error("Failed to fetch dashboard data");
+
+      const dashboardData = await response.json();
+      setData(dashboardData);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load dashboard data"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <Layout>
+        <Container maxWidth="xl" sx={{ py: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "50vh",
+            }}
+          >
+            <CircularProgress />
+          </Box>
+        </Container>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <Container maxWidth="xl" sx={{ py: 2 }}>
+          <Alert severity="error">{error}</Alert>
+        </Container>
+      </Layout>
+    );
+  }
+
+  if (!data) {
+    return (
+      <Layout>
+        <Container maxWidth="xl" sx={{ py: 2 }}>
+          <Alert severity="info">
+            No data available. Import some CSV files to see your financial
+            overview.
+          </Alert>
+        </Container>
+      </Layout>
+    );
+  }
   return (
     <Layout>
       <Container maxWidth="xl" sx={{ py: 2 }}>
@@ -84,7 +168,11 @@ export default function Dashboard() {
                   />
                 </Box>
                 <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-                  $0.00
+                  $
+                  {data.netWorth.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </Typography>
                 <Typography variant="body2" sx={{ opacity: 0.9 }}>
                   Net Worth
@@ -130,7 +218,11 @@ export default function Dashboard() {
                   />
                 </Box>
                 <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-                  $0.00
+                  $
+                  {data.monthlySpend.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </Typography>
                 <Typography variant="body2" sx={{ opacity: 0.9 }}>
                   Monthly Spend
@@ -157,14 +249,14 @@ export default function Dashboard() {
                   variant="h4"
                   sx={{ fontWeight: 700, mb: 1, color: "primary.main" }}
                 >
-                  No data yet
+                  {data.topCategories[0]?.category || "No data yet"}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Top Category
                 </Typography>
                 <LinearProgress
                   variant="determinate"
-                  value={0}
+                  value={data.topCategories[0] ? 100 : 0}
                   sx={{ mt: 2, height: 6, borderRadius: 3 }}
                 />
               </CardContent>
@@ -189,14 +281,14 @@ export default function Dashboard() {
                   variant="h4"
                   sx={{ fontWeight: 700, mb: 1, color: "secondary.main" }}
                 >
-                  No budgets set
+                  {data.totalTransactions}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Budget Progress
+                  Total Transactions
                 </Typography>
                 <LinearProgress
                   variant="determinate"
-                  value={0}
+                  value={Math.min(100, (data.totalTransactions / 1000) * 100)}
                   color="secondary"
                   sx={{ mt: 2, height: 6, borderRadius: 3 }}
                 />
@@ -224,17 +316,59 @@ export default function Dashboard() {
                   justifyContent: "center",
                 }}
               >
-                <Box sx={{ textAlign: "center" }}>
-                  <CategoryIcon
-                    sx={{ fontSize: 64, color: "text.secondary", mb: 2 }}
-                  />
-                  <Typography variant="h6" color="text.secondary" gutterBottom>
-                    No data available
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Import some CSV files to see your spending breakdown.
-                  </Typography>
-                </Box>
+                {Object.keys(data.spendByCategory).length > 0 ? (
+                  <Box sx={{ width: "100%", height: "100%" }}>
+                    {Object.entries(data.spendByCategory)
+                      .sort(([, a], [, b]) => b - a)
+                      .slice(0, 5)
+                      .map(([category, amount], index) => (
+                        <Box key={category} sx={{ mb: 2 }}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              mb: 1,
+                            }}
+                          >
+                            <Typography variant="body2" color="text.secondary">
+                              {category}
+                            </Typography>
+                            <Typography variant="body2" fontWeight={600}>
+                              ${amount.toFixed(2)}
+                            </Typography>
+                          </Box>
+                          <LinearProgress
+                            variant="determinate"
+                            value={
+                              (amount /
+                                Math.max(
+                                  ...Object.values(data.spendByCategory)
+                                )) *
+                              100
+                            }
+                            sx={{ height: 8, borderRadius: 4 }}
+                            color="primary"
+                          />
+                        </Box>
+                      ))}
+                  </Box>
+                ) : (
+                  <Box sx={{ textAlign: "center" }}>
+                    <CategoryIcon
+                      sx={{ fontSize: 64, color: "text.secondary", mb: 2 }}
+                    />
+                    <Typography
+                      variant="h6"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      No data available
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Import some CSV files to see your spending breakdown.
+                    </Typography>
+                  </Box>
+                )}
               </CardContent>
             </Card>
           </Grid>
@@ -256,17 +390,59 @@ export default function Dashboard() {
                   justifyContent: "center",
                 }}
               >
-                <Box sx={{ textAlign: "center" }}>
-                  <TrendingUpIcon
-                    sx={{ fontSize: 64, color: "text.secondary", mb: 2 }}
-                  />
-                  <Typography variant="h6" color="text.secondary" gutterBottom>
-                    No data available
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Import some CSV files to see your monthly spending trends.
-                  </Typography>
-                </Box>
+                {data.monthlyTrends.length > 0 ? (
+                  <Box sx={{ width: "100%", height: "100%" }}>
+                    {data.monthlyTrends.map((trend, index) => (
+                      <Box key={trend.month} sx={{ mb: 2 }}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            mb: 1,
+                          }}
+                        >
+                          <Typography variant="body2" color="text.secondary">
+                            {new Date(trend.month + "-01").toLocaleDateString(
+                              "en-US",
+                              { month: "short", year: "numeric" }
+                            )}
+                          </Typography>
+                          <Typography variant="body2" fontWeight={600}>
+                            ${trend.spend.toFixed(2)}
+                          </Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={
+                            (trend.spend /
+                              Math.max(
+                                ...data.monthlyTrends.map((t) => t.spend)
+                              )) *
+                            100
+                          }
+                          sx={{ height: 8, borderRadius: 4 }}
+                          color="secondary"
+                        />
+                      </Box>
+                    ))}
+                  </Box>
+                ) : (
+                  <Box sx={{ textAlign: "center" }}>
+                    <TrendingUpIcon
+                      sx={{ fontSize: 64, color: "text.secondary", mb: 2 }}
+                    />
+                    <Typography
+                      variant="h6"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      No data available
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Import some CSV files to see your monthly spending trends.
+                    </Typography>
+                  </Box>
+                )}
               </CardContent>
             </Card>
           </Grid>
