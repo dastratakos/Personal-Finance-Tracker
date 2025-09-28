@@ -137,17 +137,20 @@ All pages accessible from a left nav: Dashboard, Transactions, Budgets, Net Wort
 
 ## Roadmap (Checklist)
 
-- [ ] **Scaffold project**: Next.js + Prisma + SQLite + MUI.
-- [ ] **Prisma schema** for `Transaction` + `Import` + `Budget` + `Account`.
+- [x] **Scaffold project**: Next.js + Prisma + SQLite + MUI.
+- [x] **Prisma schema** for `Transaction` + `Import` + `Budget` + `Account`.
+- [x] **Basic Layout**: Navigation sidebar, responsive design, dark theme.
+- [x] **Dashboard UI**: Placeholder cards and charts with Material UI design.
 - [ ] **Import logic**:
   - Detect source from filename.
   - Normalize → unified schema.
   - Deduplicate + link transfers.
+- [ ] **API routes**: Backend endpoints for transaction CRUD, import, budgets.
 - [ ] **Transactions page**:
   - Virtualized MUI table.
   - Filters, search, inline edit, bulk edit.
   - Export CSV.
-- [ ] **Dashboard**:
+- [ ] **Dashboard data integration**:
   - Donut (spend by category).
   - Stacked bar (monthly spend).
   - Sankey (income → spend flow).
@@ -158,3 +161,5 @@ All pages accessible from a left nav: Dashboard, Transactions, Budgets, Net Wort
   - Line chart from balances.
 - [ ] **Imports page**:
   - List imports + reupload support.
+- [ ] **Settings page**:
+  - Manage accounts and categories.
