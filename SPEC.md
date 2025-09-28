@@ -97,7 +97,7 @@ All pages accessible from a left nav: Dashboard, Transactions, Budgets, Net Wort
 ## Transactions Page (the flagship)
 
 - **Top bar:** Search box (merchant/note), date range picker, filters (multi-select source, category chips), "Import CSV" button, "Export" filtered table to CSV button.
-- **Table:** Virtualized (MUI X DataGrid). Columns: Date, Merchant (searchable), Amount, Source, Category (editable dropdown), Note (editable text), Manual badge.
+- **Table:** Virtualized (MUI). Columns: Date, Merchant (searchable), Amount, Source, Category (editable dropdown), Note (editable text), Manual badge.
 - **Inline edit behavior:** clicking Category opens a MUI Select with defined categories; changing triggers optimistic UI update & PATCH API; on error, show Snackbar with undo.
 - **Bulk actions:** Checkbox row selection → bottom bar with bulk category assign, export selected.
 - **Row indicators:** small tag showing `isManual`. Transfers shown in faint color and excluded from spend totals.
@@ -138,7 +138,7 @@ All pages accessible from a left nav: Dashboard, Transactions, Budgets, Net Wort
 ## Roadmap (Checklist)
 
 - [ ] **Scaffold project**: Next.js + Prisma + SQLite + MUI.
-- [ ] **Prisma schema** for `Transaction` + `Import` + `Budget` + `Account`.
+- [ ] **Prisma schema** for `Transaction` + `Import`.
 - [ ] **Import logic**:
   - Detect source from filename.
   - Normalize → unified schema.

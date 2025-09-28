@@ -1,0 +1,67 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Transaction {
+  id              String   @id                 // source id or computed fingerprint
+  accountId       String                       // FK to Account.id
+  date            DateTime
+  amount          Decimal
+  merchant        String?
+  category        String?
+  note            String?
+  custom_category String?
+  isManual        Boolean   @default(false)    // set if user edited
+  importedAt      DateTime  @default(now())
+  importId        String?                      // FK to Import.id
+  
+  // Relations
+  account         Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  import          Import?  @relation(fields: [importId], references: [id], onDelete: SetNull)
+  
+  @@map("transactions")
+}
+
+model Import {
+  id        String   @id @default(cuid())
+  filename  String
+  checksum  String
+  source    String
+  importedAt DateTime @default(now())
+  
+  // Relations
+  transactions Transaction[]
+  
+  @@map("imports")
+}
+
+model Budget {
+  id          String   @id @default(cuid())
+  category    String
+  amount      Decimal
+  startDate   DateTime
+  endDate     DateTime?   // null = indefinite
+  createdAt   DateTime @default(now())
+  
+  @@map("budgets")
+}
+
+model Account {
+  id          String   @id @default(cuid())
+  name        String                                 // e.g. "Amex", "Wells Fargo"
+  accountType String?                                // "bank", "credit_card", "investment", "venmo"
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  transactions Transaction[]
+  
+  @@map("accounts")
+}
