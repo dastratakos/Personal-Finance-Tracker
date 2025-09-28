@@ -1,0 +1,381 @@
+"use client";
+
+import {
+  Container,
+  Typography,
+  Card,
+  CardContent,
+  CardHeader,
+  Box,
+  Grid,
+  Chip,
+  IconButton,
+  Tooltip,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  ToggleButton,
+  ToggleButtonGroup,
+} from "@mui/material";
+import Layout from "@/components/Layout";
+import {
+  TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon,
+  AccountBalance as AccountBalanceIcon,
+  Savings as SavingsIcon,
+  CreditCard as CreditCardIcon,
+  AttachMoney as AttachMoneyIcon,
+  Refresh as RefreshIcon,
+  Download as DownloadIcon,
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
+} from "@mui/icons-material";
+import { useState } from "react";
+
+const timeRanges = ["1M", "3M", "6M", "1Y", "All"];
+const accountTypes = ["All", "Bank", "Credit Card", "Investment", "Other"];
+
+export default function NetWorth() {
+  const [selectedRange, setSelectedRange] = useState("6M");
+  const [selectedAccountType, setSelectedAccountType] = useState("All");
+  const [showBreakdown, setShowBreakdown] = useState(true);
+
+  const handleRangeChange = (
+    event: React.MouseEvent<HTMLElement>,
+    newRange: string | null
+  ) => {
+    if (newRange !== null) {
+      setSelectedRange(newRange);
+    }
+  };
+
+  const handleAccountTypeChange = (event: any) => {
+    setSelectedAccountType(event.target.value);
+  };
+
+  const mockNetWorth = 125000;
+  const mockChange = 5.2;
+  const mockChangeAmount = 6200;
+
+  const accounts = [
+    { name: "Wells Fargo Checking", type: "Bank", balance: 8500, change: 2.1 },
+    { name: "Wells Fargo Savings", type: "Bank", balance: 25000, change: 1.8 },
+    { name: "Vanguard 401k", type: "Investment", balance: 45000, change: 8.2 },
+    { name: "Vanguard IRA", type: "Investment", balance: 32000, change: 7.5 },
+    { name: "Amex Gold", type: "Credit Card", balance: -1200, change: -15.3 },
+    {
+      name: "Wells Fargo Credit",
+      type: "Credit Card",
+      balance: -800,
+      change: -5.2,
+    },
+    { name: "Venmo", type: "Other", balance: 150, change: 0 },
+  ];
+
+  const totalAssets = accounts
+    .filter((acc) => acc.balance > 0)
+    .reduce((sum, acc) => sum + acc.balance, 0);
+
+  const totalLiabilities = Math.abs(
+    accounts
+      .filter((acc) => acc.balance < 0)
+      .reduce((sum, acc) => sum + acc.balance, 0)
+  );
+
+  return (
+    <Layout>
+      <Container maxWidth="xl" sx={{ py: 2 }}>
+        {/* Header Section */}
+        <Box sx={{ mb: 4 }}>
+          <Typography
+            variant="h4"
+            component="h1"
+            gutterBottom
+            sx={{ fontWeight: 700 }}
+          >
+            Net Worth
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            Track your financial health and net worth over time.
+          </Typography>
+          <Box
+            sx={{
+              display: "flex",
+              gap: 2,
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
+            <ToggleButtonGroup
+              value={selectedRange}
+              exclusive
+              onChange={handleRangeChange}
+              size="small"
+            >
+              {timeRanges.map((range) => (
+                <ToggleButton key={range} value={range}>
+                  {range}
+                </ToggleButton>
+              ))}
+            </ToggleButtonGroup>
+
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <InputLabel>Account Type</InputLabel>
+              <Select
+                value={selectedAccountType}
+                label="Account Type"
+                onChange={handleAccountTypeChange}
+              >
+                {accountTypes.map((type) => (
+                  <MenuItem key={type} value={type}>
+                    {type}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <Box sx={{ ml: "auto", display: "flex", gap: 1 }}>
+              <Tooltip title="Refresh data">
+                <IconButton color="primary">
+                  <RefreshIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Export data">
+                <IconButton color="secondary">
+                  <DownloadIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Net Worth Summary */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Card
+              sx={{
+                background: "linear-gradient(135deg, #00d4aa 0%, #00a085 100%)",
+                color: "white",
+                position: "relative",
+                overflow: "hidden",
+                "&::before": {
+                  content: '""',
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  width: "100px",
+                  height: "100px",
+                  background: "rgba(255, 255, 255, 0.1)",
+                  borderRadius: "50%",
+                  transform: "translate(30px, -30px)",
+                },
+              }}
+            >
+              <CardContent sx={{ position: "relative", zIndex: 1 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    mb: 2,
+                  }}
+                >
+                  <AccountBalanceIcon sx={{ fontSize: 40, opacity: 0.8 }} />
+                  <Chip
+                    label={`+${mockChange}%`}
+                    size="small"
+                    sx={{ bgcolor: "rgba(255, 255, 255, 0.2)", color: "white" }}
+                  />
+                </Box>
+                <Typography variant="h3" sx={{ fontWeight: 700, mb: 1 }}>
+                  ${mockNetWorth.toLocaleString()}
+                </Typography>
+                <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                  Net Worth
+                </Typography>
+                <Typography variant="body2" sx={{ opacity: 0.8, mt: 1 }}>
+                  +${mockChangeAmount.toLocaleString()} this month
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Card>
+              <CardContent>
+                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                  <SavingsIcon color="success" sx={{ fontSize: 32, mr: 1 }} />
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Assets
+                  </Typography>
+                </Box>
+                <Typography
+                  variant="h4"
+                  sx={{ fontWeight: 700, mb: 1, color: "success.main" }}
+                >
+                  ${totalAssets.toLocaleString()}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Total liquid and investment assets
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Card>
+              <CardContent>
+                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                  <CreditCardIcon color="error" sx={{ fontSize: 32, mr: 1 }} />
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Liabilities
+                  </Typography>
+                </Box>
+                <Typography
+                  variant="h4"
+                  sx={{ fontWeight: 700, mb: 1, color: "error.main" }}
+                >
+                  ${totalLiabilities.toLocaleString()}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Total debt and credit card balances
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {/* Net Worth Chart Placeholder */}
+        <Card sx={{ mb: 4 }}>
+          <CardHeader
+            title="Net Worth Over Time"
+            titleTypographyProps={{ fontWeight: 600 }}
+            action={
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Chip label={selectedRange} size="small" color="primary" />
+                <IconButton size="small">
+                  {showBreakdown ? <VisibilityIcon /> : <VisibilityOffIcon />}
+                </IconButton>
+              </Box>
+            }
+          />
+          <CardContent
+            sx={{
+              height: 400,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Box sx={{ textAlign: "center" }}>
+              <TrendingUpIcon
+                sx={{ fontSize: 64, color: "text.secondary", mb: 2 }}
+              />
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                No data available
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Import account balance data to see your net worth trends.
+              </Typography>
+            </Box>
+          </CardContent>
+        </Card>
+
+        {/* Account Breakdown */}
+        <Card>
+          <CardHeader
+            title="Account Breakdown"
+            titleTypographyProps={{ fontWeight: 600 }}
+            action={
+              <Chip
+                label={`${accounts.length} accounts`}
+                size="small"
+                color="secondary"
+              />
+            }
+          />
+          <CardContent>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {accounts.map((account, index) => (
+                <Box
+                  key={account.name}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    p: 2,
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 2,
+                    bgcolor: "background.paper",
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Box
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: "50%",
+                        bgcolor:
+                          account.balance > 0 ? "success.light" : "error.light",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {account.balance > 0 ? (
+                        <SavingsIcon color="success" />
+                      ) : (
+                        <CreditCardIcon color="error" />
+                      )}
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                        {account.name}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {account.type}
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  <Box sx={{ textAlign: "right" }}>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontWeight: 600,
+                        color:
+                          account.balance > 0 ? "success.main" : "error.main",
+                      }}
+                    >
+                      ${Math.abs(account.balance).toLocaleString()}
+                    </Typography>
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                    >
+                      {account.change > 0 ? (
+                        <TrendingUpIcon color="success" sx={{ fontSize: 16 }} />
+                      ) : (
+                        <TrendingDownIcon color="error" sx={{ fontSize: 16 }} />
+                      )}
+                      <Typography
+                        variant="body2"
+                        color={
+                          account.change > 0 ? "success.main" : "error.main"
+                        }
+                      >
+                        {account.change > 0 ? "+" : ""}
+                        {account.change}%
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          </CardContent>
+        </Card>
+      </Container>
+    </Layout>
+  );
+}

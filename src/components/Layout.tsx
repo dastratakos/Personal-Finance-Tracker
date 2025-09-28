@@ -1,26 +1,22 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import {
-  AppBar,
   Box,
   CssBaseline,
   Drawer,
-  IconButton,
   List,
   ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Toolbar,
   Typography,
   ThemeProvider,
   Divider,
   Avatar,
-  Chip,
 } from "@mui/material";
 import {
-  Menu as MenuIcon,
   Dashboard as DashboardIcon,
   AccountBalance as AccountBalanceIcon,
   TrendingUp as TrendingUpIcon,
@@ -34,27 +30,12 @@ import { theme } from "@/lib/theme";
 const drawerWidth = 280;
 
 const menuItems = [
-  { text: "Dashboard", icon: <DashboardIcon />, href: "/", badge: null },
-  {
-    text: "Transactions",
-    icon: <AccountBalanceIcon />,
-    href: "/transactions",
-    badge: null,
-  },
-  {
-    text: "Budgets",
-    icon: <AttachMoneyIcon />,
-    href: "/budgets",
-    badge: "New",
-  },
-  {
-    text: "Net Worth",
-    icon: <TrendingUpIcon />,
-    href: "/net-worth",
-    badge: null,
-  },
-  { text: "Imports", icon: <UploadIcon />, href: "/imports", badge: null },
-  { text: "Settings", icon: <SettingsIcon />, href: "/settings", badge: null },
+  { text: "Dashboard", icon: <DashboardIcon />, href: "/dashboard" },
+  { text: "Transactions", icon: <AccountBalanceIcon />, href: "/transactions" },
+  { text: "Budgets", icon: <AttachMoneyIcon />, href: "/budgets" },
+  { text: "Net Worth", icon: <TrendingUpIcon />, href: "/net-worth" },
+  { text: "Imports", icon: <UploadIcon />, href: "/imports" },
+  { text: "Settings", icon: <SettingsIcon />, href: "/settings" },
 ];
 
 interface LayoutProps {
@@ -63,14 +44,21 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
+  const handleNavigation = (href: string) => {
+    router.push(href);
+    setMobileOpen(false); // Close mobile drawer after navigation
+  };
+
   const drawer = (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <Toolbar sx={{ px: 3, py: 2 }}>
+      <Box sx={{ px: 3, py: 2 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <Avatar
             sx={{
@@ -97,56 +85,49 @@ export default function Layout({ children }: LayoutProps) {
             </Typography>
           </Box>
         </Box>
-      </Toolbar>
+      </Box>
       <Divider sx={{ mx: 2 }} />
       <List sx={{ px: 2, py: 2, flex: 1 }}>
-        {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
-            <ListItemButton
-              sx={{
-                borderRadius: 2,
-                py: 1.5,
-                px: 2,
-                "&:hover": {
-                  backgroundColor: "rgba(0, 212, 170, 0.1)",
-                },
-                "&.Mui-selected": {
-                  backgroundColor: "primary.main",
-                  color: "primary.contrastText",
+        {menuItems.map((item) => {
+          const isSelected = pathname === item.href;
+          return (
+            <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+              <ListItemButton
+                onClick={() => handleNavigation(item.href)}
+                selected={isSelected}
+                sx={{
+                  borderRadius: 2,
+                  py: 1.5,
+                  px: 2,
                   "&:hover": {
-                    backgroundColor: "primary.dark",
+                    backgroundColor: "rgba(0, 212, 170, 0.1)",
                   },
-                  "& .MuiListItemIcon-root": {
+                  "&.Mui-selected": {
+                    backgroundColor: "primary.main",
                     color: "primary.contrastText",
+                    "&:hover": {
+                      backgroundColor: "primary.dark",
+                    },
+                    "& .MuiListItemIcon-root": {
+                      color: "primary.contrastText",
+                    },
                   },
-                },
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 40, color: "inherit" }}>
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText
-                primary={item.text}
-                primaryTypographyProps={{
-                  fontWeight: 500,
-                  fontSize: "0.95rem",
                 }}
-              />
-              {item.badge && (
-                <Chip
-                  label={item.badge}
-                  size="small"
-                  color="secondary"
-                  sx={{
-                    height: 20,
-                    fontSize: "0.7rem",
-                    fontWeight: 600,
+              >
+                <ListItemIcon sx={{ minWidth: 40, color: "inherit" }}>
+                  {item.icon}
+                </ListItemIcon>
+                <ListItemText
+                  primary={item.text}
+                  primaryTypographyProps={{
+                    fontWeight: 500,
+                    fontSize: "0.95rem",
                   }}
                 />
-              )}
-            </ListItemButton>
-          </ListItem>
-        ))}
+              </ListItemButton>
+            </ListItem>
+          );
+        })}
       </List>
       <Divider sx={{ mx: 2 }} />
       <Box sx={{ p: 2 }}>
@@ -166,58 +147,6 @@ export default function Layout({ children }: LayoutProps) {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ display: "flex" }}>
-        <AppBar
-          position="fixed"
-          sx={{
-            width: { sm: `calc(100% - ${drawerWidth}px)` },
-            ml: { sm: `${drawerWidth}px` },
-            backdropFilter: "blur(10px)",
-            backgroundColor: "rgba(10, 10, 10, 0.8)",
-          }}
-        >
-          <Toolbar sx={{ px: 3 }}>
-            <IconButton
-              color="inherit"
-              aria-label="open drawer"
-              edge="start"
-              onClick={handleDrawerToggle}
-              sx={{
-                mr: 2,
-                display: { sm: "none" },
-                "&:hover": {
-                  backgroundColor: "rgba(255, 255, 255, 0.1)",
-                },
-              }}
-            >
-              <MenuIcon />
-            </IconButton>
-            <Box sx={{ flexGrow: 1 }}>
-              <Typography
-                variant="h6"
-                noWrap
-                component="div"
-                sx={{ fontWeight: 600 }}
-              >
-                Dashboard
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Welcome back! Here's your financial overview.
-              </Typography>
-            </Box>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Chip
-                label="Live"
-                size="small"
-                color="success"
-                sx={{
-                  height: 24,
-                  fontSize: "0.75rem",
-                  fontWeight: 600,
-                }}
-              />
-            </Box>
-          </Toolbar>
-        </AppBar>
         <Box
           component="nav"
           sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
@@ -258,13 +187,11 @@ export default function Layout({ children }: LayoutProps) {
           component="main"
           sx={{
             flexGrow: 1,
-            p: { xs: 2, sm: 3 },
             width: { sm: `calc(100% - ${drawerWidth}px)` },
             minHeight: "100vh",
             background: "linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%)",
           }}
         >
-          <Toolbar />
           <Box sx={{ maxWidth: "100%", mx: "auto" }}>{children}</Box>
         </Box>
       </Box>

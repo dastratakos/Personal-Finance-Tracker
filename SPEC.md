@@ -141,6 +141,12 @@ All pages accessible from a left nav: Dashboard, Transactions, Budgets, Net Wort
 - [x] **Prisma schema** for `Transaction` + `Import` + `Budget` + `Account`.
 - [x] **Basic Layout**: Navigation sidebar, responsive design, dark theme.
 - [x] **Dashboard UI**: Placeholder cards and charts with Material UI design.
+- [x] **Placeholder pages**: All main pages with Material UI structure.
+  - [x] **Transactions page**: Table structure with filters and search.
+  - [x] **Budgets page**: Budget management UI with progress indicators.
+  - [x] **Net Worth page**: Net worth visualization with account breakdown.
+  - [x] **Imports page**: File upload interface and import history.
+  - [x] **Settings page**: Account and category management.
 - [ ] **Import logic**:
   - Detect source from filename.
   - Normalize → unified schema.
