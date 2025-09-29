@@ -5,6 +5,7 @@ import {
   tryFindCategory,
   CATEGORY_TO_MERCHANTS,
 } from "../import-utils";
+import { parseCSVData } from "../csv-utils";
 
 const AMEX_CATEGORY_TO_MY_CATEGORY: Record<string, string | null> = {
   "Entertainment-Theatrical Events": "Entertainment",
@@ -23,21 +24,20 @@ const AMEX_CATEGORY_TO_MY_CATEGORY: Record<string, string | null> = {
 
 export class AmexParser implements CSVParser {
   parse(csvContent: string, filename: string): ParserResult {
-    const lines = csvContent.split("\n").filter((line) => line.trim());
+    const rows = parseCSVData(csvContent, 1); // Skip header line
     const transactions: TransactionData[] = [];
 
-    // Skip header line
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i];
-      if (!line.trim()) continue;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.length === 0) continue;
 
       try {
-        const transaction = this.parseLine(line);
+        const transaction = this.parseRow(row);
         if (transaction) {
           transactions.push(transaction);
         }
       } catch (error) {
-        console.warn(`Error parsing Amex line ${i}:`, error);
+        console.warn(`Error parsing Amex row ${i}:`, error);
       }
     }
 
@@ -48,12 +48,31 @@ export class AmexParser implements CSVParser {
     };
   }
 
-  private parseLine(line: string): TransactionData | null {
-    const fields = this.parseCSVLine(line);
-    if (fields.length < 11) return null;
+  private parseRow(fields: string[]): TransactionData | null {
+    if (fields.length < 10) return null;
 
-    const id = fields[9]?.replace(/'/g, "");
-    const date = new Date(fields[0]);
+    // Find the ID field - it's the field that starts with a quote and contains digits
+    let id: string | undefined;
+    let amexCategory: string | undefined;
+    
+    for (let i = 9; i < fields.length; i++) {
+      const field = fields[i];
+      if (field && field.startsWith("'") && field.match(/\d/)) {
+        id = field.replace(/'/g, "");
+        break;
+      }
+    }
+    
+    // Find the category field - it's usually the second to last field (Category Code)
+    if (fields.length > 11) {
+      amexCategory = fields[fields.length - 2]; // Category Code
+    } else {
+      amexCategory = fields[fields.length - 1]; // Fallback to last field
+    }
+
+    // Parse date in MM/DD/YYYY format using UTC to avoid timezone issues
+    const [month, day, year] = fields[0].split('/');
+    const date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
     const amount = -1 * parseFloat(fields[2]);
 
     let merchant = fields[1];
@@ -63,25 +82,35 @@ export class AmexParser implements CSVParser {
       const [phoneNumber, detail, description] = extendedDetails.split("\n");
       merchant = merchant.replace("Venmo-", "") + ", " + detail;
     } else {
-      for (const detail of extendedDetails.split("\n")) {
-        if (
-          detail.substring(0, 20).trim() === merchant.substring(0, 20).trim()
-        ) {
+      // Look for the merchant name in the extended details
+      const details = extendedDetails.split("\n");
+      for (const detail of details) {
+        // Find a line that looks like a merchant name (not phone numbers or addresses)
+        if (detail && !detail.match(/^\d/) && !detail.includes("UNITED STATES") && !detail.includes("UNITED KINGDOM") && detail.length > 5) {
           merchant = detail;
           break;
         }
       }
     }
 
-    const amexCategory = fields[10];
     let category: string | null = null;
 
+    // First try to map from Amex category code
     if (amexCategory && AMEX_CATEGORY_TO_MY_CATEGORY[amexCategory]) {
       category = AMEX_CATEGORY_TO_MY_CATEGORY[amexCategory];
     }
 
+    // If no mapping found, try to find category from merchant name
     if (!category) {
       category = tryFindCategory(merchant, CATEGORY_TO_MERCHANTS);
+    }
+
+    // If still no category, use the category description field (last field)
+    if (!category && fields.length > 10) {
+      const categoryDescription = fields[fields.length - 1];
+      if (categoryDescription) {
+        category = categoryDescription;
+      }
     }
 
     return {
@@ -95,25 +124,4 @@ export class AmexParser implements CSVParser {
     };
   }
 
-  private parseCSVLine(line: string): string[] {
-    const result: string[] = [];
-    let current = "";
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === "," && !inQuotes) {
-        result.push(current.trim());
-        current = "";
-      } else {
-        current += char;
-      }
-    }
-
-    result.push(current.trim());
-    return result;
-  }
 }

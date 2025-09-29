@@ -62,3 +62,13 @@ npx prisma studio
 # View database in terminal
 npx prisma db pull
 ```
+
+## Tests
+
+```bash
+# Run all tests
+npm run test
+
+# Run a specific test
+npm test -- --testNamePattern="VenmoParser"
+```

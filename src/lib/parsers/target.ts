@@ -7,26 +7,24 @@ import {
   CATEGORY_TO_MERCHANTS,
   generateTransactionId,
 } from "../import-utils";
+import { parseCSVData } from "../csv-utils";
 
 export class TargetParser implements CSVParser {
   parse(csvContent: string, filename: string): ParserResult {
-    const lines = csvContent.split("\n").filter((line) => line.trim());
+    const rows = parseCSVData(csvContent, 2); // Skip 2 header lines
     const transactions: TransactionData[] = [];
 
-    // Skip header lines (2)
-    const dataLines = lines.slice(2);
-
-    for (let i = 0; i < dataLines.length; i++) {
-      const line = dataLines[i];
-      if (!line.trim()) continue;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.length === 0) continue;
 
       try {
-        const transaction = this.parseLine(line);
+        const transaction = this.parseRow(row);
         if (transaction) {
           transactions.push(transaction);
         }
       } catch (error) {
-        console.warn(`Error parsing Target line ${i}:`, error);
+        console.warn(`Error parsing Target row ${i}:`, error);
       }
     }
 
@@ -37,8 +35,7 @@ export class TargetParser implements CSVParser {
     };
   }
 
-  private parseLine(line: string): TransactionData | null {
-    const fields = this.parseCSVLine(line);
+  private parseRow(fields: string[]): TransactionData | null {
     if (fields.length < 12) return null;
 
     const date = new Date(fields[2]);
@@ -72,25 +69,4 @@ export class TargetParser implements CSVParser {
     };
   }
 
-  private parseCSVLine(line: string): string[] {
-    const result: string[] = [];
-    let current = "";
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === "," && !inQuotes) {
-        result.push(current.trim());
-        current = "";
-      } else {
-        current += char;
-      }
-    }
-
-    result.push(current.trim());
-    return result;
-  }
 }

@@ -228,3 +228,12 @@ All pages accessible from a left nav: Dashboard, Transactions, Budgets, Net Wort
   - Simplified category dialog to use text input for emoji selection instead of icon picker.
   - Updated transactions page to show category icons with names in chips.
   - Updated budgets page to display category icons with names in card titles.
+- [x] **Parser testing framework**:
+  - Created comprehensive test suite for all parsers (Amex, Venmo, Wells Fargo, Target, CIT, Bilt).
+  - Implemented assertTransactionEqual helper function for consistent test assertions.
+  - Added anonymization helper to protect sensitive data in tests.
+  - Created Jest configuration for running parser tests.
+  - Fixed CIT parser to properly categorize transfer transactions.
+  - Fixed Bilt parser to skip header lines correctly.
+  - Updated Wells Fargo, CIT, and Bilt parsers to pass all tests.
+  - Identified and documented remaining issues with Amex, Venmo, and Target parsers that need CSV format adjustments.

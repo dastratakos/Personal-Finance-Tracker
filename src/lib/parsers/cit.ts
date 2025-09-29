@@ -8,6 +8,7 @@ import {
   removeChars,
   generateTransactionId,
 } from "../import-utils";
+import { parseCSVData } from "../csv-utils";
 
 const MERCHANT_TO_NOTE: Record<string, string> = {
   "AMEX EPAYMENT ACH PMT": "Amex credit card bill",
@@ -22,23 +23,20 @@ const MERCHANT_TO_NOTE: Record<string, string> = {
 
 export class CITParser implements CSVParser {
   parse(csvContent: string, filename: string): ParserResult {
-    const lines = csvContent.split("\n").filter((line) => line.trim());
+    const rows = parseCSVData(csvContent, 1); // Skip header line
     const transactions: TransactionData[] = [];
 
-    // Skip header line
-    const dataLines = lines.slice(1);
-
-    for (let i = 0; i < dataLines.length; i++) {
-      const line = dataLines[i];
-      if (!line.trim()) continue;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.length === 0) continue;
 
       try {
-        const transaction = this.parseLine(line);
+        const transaction = this.parseRow(row);
         if (transaction) {
           transactions.push(transaction);
         }
       } catch (error) {
-        console.warn(`Error parsing CIT line ${i}:`, error);
+        console.warn(`Error parsing CIT row ${i}:`, error);
       }
     }
 
@@ -49,8 +47,7 @@ export class CITParser implements CSVParser {
     };
   }
 
-  private parseLine(line: string): TransactionData | null {
-    const fields = this.parseCSVLine(line);
+  private parseRow(fields: string[]): TransactionData | null {
     if (fields.length < 6) return null;
 
     const date = new Date(fields[0]);
@@ -68,7 +65,12 @@ export class CITParser implements CSVParser {
     }
 
     const merchant = fields[3];
-    const category = tryFindCategory(merchant, CATEGORY_TO_MERCHANTS);
+    let category = tryFindCategory(merchant, CATEGORY_TO_MERCHANTS);
+    
+    // Special handling for known transfer merchants
+    if (!category && (merchant.includes("TARGET") || merchant.includes("VENMO") || merchant.includes("VANGUARD"))) {
+      category = "Transfer";
+    }
 
     let note: string | null = null;
     for (const [merchantPattern, noteText] of Object.entries(
@@ -93,25 +95,4 @@ export class CITParser implements CSVParser {
     };
   }
 
-  private parseCSVLine(line: string): string[] {
-    const result: string[] = [];
-    let current = "";
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === "," && !inQuotes) {
-        result.push(current.trim());
-        current = "";
-      } else {
-        current += char;
-      }
-    }
-
-    result.push(current.trim());
-    return result;
-  }
 }

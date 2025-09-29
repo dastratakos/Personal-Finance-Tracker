@@ -5,23 +5,24 @@ import {
   tryFindCategory,
   CATEGORY_TO_MERCHANTS,
 } from "../import-utils";
+import { parseCSVData } from "../csv-utils";
 
 export class BiltParser implements CSVParser {
   parse(csvContent: string, filename: string): ParserResult {
-    const lines = csvContent.split("\n").filter((line) => line.trim());
+    const rows = parseCSVData(csvContent, 1); // Skip header line
     const transactions: TransactionData[] = [];
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      if (!line.trim()) continue;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.length === 0) continue;
 
       try {
-        const transaction = this.parseLine(line);
+        const transaction = this.parseRow(row);
         if (transaction) {
           transactions.push(transaction);
         }
       } catch (error) {
-        console.warn(`Error parsing Bilt line ${i}:`, error);
+        console.warn(`Error parsing Bilt row ${i}:`, error);
       }
     }
 
@@ -32,8 +33,7 @@ export class BiltParser implements CSVParser {
     };
   }
 
-  private parseLine(line: string): TransactionData | null {
-    const fields = this.parseCSVLine(line);
+  private parseRow(fields: string[]): TransactionData | null {
     if (fields.length < 5) return null;
 
     const date = new Date(fields[0]);
@@ -53,25 +53,4 @@ export class BiltParser implements CSVParser {
     };
   }
 
-  private parseCSVLine(line: string): string[] {
-    const result: string[] = [];
-    let current = "";
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === "," && !inQuotes) {
-        result.push(current.trim());
-        current = "";
-      } else {
-        current += char;
-      }
-    }
-
-    result.push(current.trim());
-    return result;
-  }
 }

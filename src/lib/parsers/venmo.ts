@@ -6,26 +6,24 @@ import {
   removeChars,
   generateTransactionId,
 } from "../import-utils";
+import { parseCSVData } from "../csv-utils";
 
 export class VenmoParser implements CSVParser {
   parse(csvContent: string, filename: string): ParserResult {
-    const lines = csvContent.split("\n").filter((line) => line.trim());
+    const rows = parseCSVData(csvContent, 1); // Skip 1 header line
     const transactions: TransactionData[] = [];
 
-    // Skip header lines (4) and footer (1)
-    const dataLines = lines.slice(4, -1);
-
-    for (let i = 0; i < dataLines.length; i++) {
-      const line = dataLines[i];
-      if (!line.trim()) continue;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.length === 0) continue;
 
       try {
-        const transaction = this.parseLine(line);
+        const transaction = this.parseRow(row);
         if (transaction) {
           transactions.push(transaction);
         }
       } catch (error) {
-        console.warn(`Error parsing Venmo line ${i}:`, error);
+        console.warn(`Error parsing Venmo row ${i}:`, error);
       }
     }
 
@@ -36,8 +34,7 @@ export class VenmoParser implements CSVParser {
     };
   }
 
-  private parseLine(line: string): TransactionData | null {
-    const fields = this.parseCSVLine(line);
+  private parseRow(fields: string[]): TransactionData | null {
     if (fields.length < 16) return null;
 
     const date = new Date(fields[2]);
@@ -45,7 +42,11 @@ export class VenmoParser implements CSVParser {
 
     const merFrom = fields[6];
     const merTo = fields[7];
-    const merchant = merFrom !== "Dean Stratakos" ? merFrom : merTo;
+    const type = fields[3];
+    
+    // For charges, use "To" field as merchant (who you're paying)
+    // For payments, use "From" field as merchant (who paid you)
+    const merchant = type === "Charge" ? merTo : merFrom;
     const id = fields[1] || generateTransactionId(date, amount, merchant);
 
     let category: string | null = null;
@@ -100,25 +101,4 @@ export class VenmoParser implements CSVParser {
     };
   }
 
-  private parseCSVLine(line: string): string[] {
-    const result: string[] = [];
-    let current = "";
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === "," && !inQuotes) {
-        result.push(current.trim());
-        current = "";
-      } else {
-        current += char;
-      }
-    }
-
-    result.push(current.trim());
-    return result;
-  }
 }
