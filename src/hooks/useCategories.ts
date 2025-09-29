@@ -1,10 +1,5 @@
 import { useState, useEffect } from "react";
-
-interface Category {
-  id: string;
-  name: string;
-  createdAt: string;
-}
+import { Category } from "@prisma/client";
 
 interface UseCategoriesReturn {
   categories: Category[];
@@ -23,11 +18,11 @@ export function useCategories(): UseCategoriesReturn {
       setLoading(true);
       setError(null);
       const response = await fetch("/api/categories");
-      
+
       if (!response.ok) {
         throw new Error("Failed to fetch categories");
       }
-      
+
       const data = await response.json();
       setCategories(data);
     } catch (err) {

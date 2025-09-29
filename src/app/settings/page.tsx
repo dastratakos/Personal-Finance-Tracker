@@ -26,8 +26,6 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Switch,
-  FormControlLabel,
   Alert,
   CircularProgress,
   Snackbar,
@@ -37,73 +35,46 @@ import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  AccountBalance as AccountBalanceIcon,
 } from "@mui/icons-material";
-import { useState, useEffect } from "react";
-import { Account } from "@/types";
+import { useState } from "react";
+import { Account } from "@prisma/client";
+import { useAccounts } from "@/hooks/useAccounts";
+import { useCategories } from "@/hooks/useCategories";
+import { Category } from "@prisma/client";
 
-const accountTypes = ["Bank", "Credit Card", "Investment", "Other"];
-
-const mockAccounts = [
-  { id: 1, name: "Wells Fargo Checking", type: "Bank", isActive: true },
-  { id: 2, name: "Wells Fargo Savings", type: "Bank", isActive: true },
-  { id: 3, name: "Amex Gold", type: "Credit Card", isActive: true },
-  { id: 4, name: "Vanguard 401k", type: "Investment", isActive: true },
-  { id: 5, name: "Venmo", type: "Other", isActive: false },
-];
-
-const defaultCategories = [
-  "Housing",
-  "Food",
-  "Groceries",
-  "Wellness",
-  "Daily Transport",
-  "Travel",
-  "Technology",
-  "Personal Care",
-  "LEGO",
-  "Clothing",
-  "Gifts",
-  "Entertainment",
-  "Subscription",
-  "Going Out",
-  "Transfer",
-];
+const accountTypes = ["Bank", "Credit Card", "Investment", "Venmo"];
 
 export default function Settings() {
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    accounts,
+    loading: accountsLoading,
+    error: accountsError,
+    refetch: refetchAccounts,
+  } = useAccounts();
+  const {
+    categories,
+    loading: categoriesLoading,
+    error: categoriesError,
+    refetch: refetchCategories,
+  } = useCategories();
+
+  const [localError, setLocalError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [openAccountDialog, setOpenAccountDialog] = useState(false);
   const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
-  const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [newCategory, setNewCategory] = useState("");
+  const [newCategoryIcon, setNewCategoryIcon] = useState("📂");
   const [accountForm, setAccountForm] = useState({
     name: "",
     type: "",
+    emoji: "🏦",
   });
 
-  // Fetch accounts
-  const fetchAccounts = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/accounts");
-      if (!response.ok) throw new Error("Failed to fetch accounts");
-
-      const data = await response.json();
-      setAccounts(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch accounts");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAccounts();
-  }, []);
+  // Combined loading and error states
+  const loading = accountsLoading || categoriesLoading;
+  const error = accountsError || categoriesError || localError;
 
   // Create or update account
   const saveAccount = async () => {
@@ -111,6 +82,7 @@ export default function Settings() {
       const accountData = {
         name: accountForm.name,
         accountType: accountForm.type,
+        emoji: accountForm.emoji,
       };
 
       const response = await fetch("/api/accounts", {
@@ -132,9 +104,11 @@ export default function Settings() {
       );
       setOpenAccountDialog(false);
       resetForm();
-      fetchAccounts();
+      refetchAccounts();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save account");
+      setLocalError(
+        err instanceof Error ? err.message : "Failed to save account"
+      );
     }
   };
 
@@ -148,9 +122,11 @@ export default function Settings() {
       if (!response.ok) throw new Error("Failed to delete account");
 
       setSuccess("Account deleted successfully");
-      fetchAccounts();
+      refetchAccounts();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete account");
+      setLocalError(
+        err instanceof Error ? err.message : "Failed to delete account"
+      );
     }
   };
 
@@ -158,6 +134,7 @@ export default function Settings() {
     setAccountForm({
       name: "",
       type: "",
+      emoji: "🏦",
     });
     setEditingAccount(null);
   };
@@ -167,6 +144,7 @@ export default function Settings() {
       setAccountForm({
         name: account.name,
         type: account.accountType || "",
+        emoji: account.emoji || "🏦",
       });
     } else {
       resetForm();
@@ -180,9 +158,10 @@ export default function Settings() {
     resetForm();
   };
 
-  const handleOpenCategoryDialog = (category?: string) => {
+  const handleOpenCategoryDialog = (category?: Category) => {
     setEditingCategory(category || null);
-    setNewCategory(category || "");
+    setNewCategory(category?.name || "");
+    setNewCategoryIcon(category?.emoji || "📂");
     setOpenCategoryDialog(true);
   };
 
@@ -190,11 +169,63 @@ export default function Settings() {
     setOpenCategoryDialog(false);
     setEditingCategory(null);
     setNewCategory("");
+    setNewCategoryIcon("📂");
   };
 
-  const handleSaveCategory = () => {
-    // Handle category save logic here
-    handleCloseCategoryDialog();
+  const handleSaveCategory = async () => {
+    try {
+      if (!newCategory.trim()) {
+        setLocalError("Category name is required");
+        return;
+      }
+
+      const response = await fetch("/api/categories", {
+        method: editingCategory ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          editingCategory
+            ? {
+                id: editingCategory.id,
+                name: newCategory,
+                emoji: newCategoryIcon,
+              }
+            : { name: newCategory, emoji: newCategoryIcon }
+        ),
+      });
+
+      if (!response.ok) throw new Error("Failed to save category");
+
+      setSuccess(
+        editingCategory
+          ? "Category updated successfully"
+          : "Category created successfully"
+      );
+      setOpenCategoryDialog(false);
+      setNewCategory("");
+      setEditingCategory(null);
+      refetchCategories();
+    } catch (err) {
+      setLocalError(
+        err instanceof Error ? err.message : "Failed to save category"
+      );
+    }
+  };
+
+  const handleDeleteCategory = async (category: Category) => {
+    try {
+      const response = await fetch(`/api/categories?id=${category.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Failed to delete category");
+
+      setSuccess("Category deleted successfully");
+      refetchCategories();
+    } catch (err) {
+      setLocalError(
+        err instanceof Error ? err.message : "Failed to delete category"
+      );
+    }
   };
 
   return (
@@ -239,7 +270,6 @@ export default function Settings() {
                     <TableRow>
                       <TableCell>Account Name</TableCell>
                       <TableCell>Type</TableCell>
-                      <TableCell>Status</TableCell>
                       <TableCell>Actions</TableCell>
                     </TableRow>
                   </TableHead>
@@ -247,7 +277,7 @@ export default function Settings() {
                     {loading ? (
                       <TableRow>
                         <TableCell
-                          colSpan={4}
+                          colSpan={3}
                           sx={{ textAlign: "center", py: 4 }}
                         >
                           <CircularProgress />
@@ -256,7 +286,7 @@ export default function Settings() {
                     ) : accounts.length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={4}
+                          colSpan={3}
                           sx={{ textAlign: "center", py: 4 }}
                         >
                           <Typography variant="body2" color="text.secondary">
@@ -275,7 +305,12 @@ export default function Settings() {
                                 gap: 1,
                               }}
                             >
-                              <AccountBalanceIcon color="action" />
+                              <Typography
+                                variant="h6"
+                                sx={{ fontSize: "1.2rem" }}
+                              >
+                                {account.emoji}
+                              </Typography>
                               <Typography variant="body2">
                                 {account.name}
                               </Typography>
@@ -295,14 +330,6 @@ export default function Settings() {
                                   ? "info"
                                   : "default"
                               }
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label="Active"
-                              size="small"
-                              color="success"
-                              variant="outlined"
                             />
                           </TableCell>
                           <TableCell>
@@ -356,25 +383,98 @@ export default function Settings() {
               }
             />
             <CardContent>
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 3 }}>
-                {defaultCategories.map((category) => (
-                  <Chip
-                    key={category}
-                    label={category}
-                    onDelete={() => handleOpenCategoryDialog(category)}
-                    deleteIcon={<EditIcon />}
-                    variant="outlined"
-                    sx={{ mb: 1 }}
-                  />
-                ))}
-              </Box>
-              <Alert severity="info">
-                <Typography variant="body2">
-                  <strong>Note:</strong> Categories are used to organize your
-                  transactions. You can add custom categories or modify existing
-                  ones.
-                </Typography>
-              </Alert>
+              <TableContainer component={Paper} variant="outlined">
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Category</TableCell>
+                      <TableCell>Created</TableCell>
+                      <TableCell>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {categoriesLoading ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={3}
+                          sx={{ textAlign: "center", py: 4 }}
+                        >
+                          <CircularProgress />
+                        </TableCell>
+                      </TableRow>
+                    ) : categories.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={3}
+                          sx={{ textAlign: "center", py: 4 }}
+                        >
+                          <Typography variant="body2" color="text.secondary">
+                            No categories found. Create your first category.
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      categories.map((category) => (
+                        <TableRow key={category.id}>
+                          <TableCell>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                              }}
+                            >
+                              <Typography
+                                variant="h6"
+                                sx={{ fontSize: "1.2rem" }}
+                              >
+                                {category.emoji}
+                              </Typography>
+                              <Typography variant="body2">
+                                {category.name}
+                              </Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" color="text.secondary">
+                              {new Date(
+                                category.createdAt
+                              ).toLocaleDateString()}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Box sx={{ display: "flex", gap: 0.5 }}>
+                              <IconButton
+                                size="small"
+                                onClick={() =>
+                                  handleOpenCategoryDialog(category)
+                                }
+                              >
+                                <EditIcon />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => {
+                                  if (
+                                    window.confirm(
+                                      `Are you sure you want to delete "${category.name}"?`
+                                    )
+                                  ) {
+                                    handleDeleteCategory(category);
+                                  }
+                                }}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </CardContent>
           </Card>
         </Box>
@@ -423,9 +523,15 @@ export default function Settings() {
                 </Select>
               </FormControl>
 
-              <FormControlLabel
-                control={<Switch defaultChecked={true} />}
-                label="Active account"
+              <TextField
+                fullWidth
+                label="Icon (Emoji)"
+                value={accountForm.emoji}
+                onChange={(e) =>
+                  setAccountForm((prev) => ({ ...prev, emoji: e.target.value }))
+                }
+                placeholder="e.g., 🏦, 💳, 📈"
+                helperText="Enter a single emoji to represent this account"
               />
             </Box>
           </DialogContent>
@@ -459,6 +565,15 @@ export default function Settings() {
                 placeholder="e.g., Healthcare, Education"
               />
 
+              <TextField
+                fullWidth
+                label="Icon (Emoji)"
+                value={newCategoryIcon}
+                onChange={(e) => setNewCategoryIcon(e.target.value)}
+                placeholder="e.g., 🏥, 🎓, 💊"
+                helperText="Enter a single emoji to represent this category"
+              />
+
               <Alert severity="info">
                 <Typography variant="body2">
                   Category names should be descriptive and help you organize
@@ -479,9 +594,9 @@ export default function Settings() {
         <Snackbar
           open={!!error}
           autoHideDuration={6000}
-          onClose={() => setError(null)}
+          onClose={() => setLocalError(null)}
         >
-          <Alert onClose={() => setError(null)} severity="error">
+          <Alert onClose={() => setLocalError(null)} severity="error">
             {error}
           </Alert>
         </Snackbar>

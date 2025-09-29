@@ -45,9 +45,9 @@ import {
   Cancel as CancelIcon,
 } from "@mui/icons-material";
 import { useState, useEffect, useCallback } from "react";
-import { Transaction } from "@/types";
 import { useCategories } from "@/hooks/useCategories";
 import { useAccounts } from "@/hooks/useAccounts";
+import { Transaction } from "@prisma/client";
 
 const ITEM_HEIGHT = 48;
 const ITEM_PADDING_TOP = 8;
@@ -61,11 +61,15 @@ const MenuProps = {
 };
 
 export default function Transactions() {
-  const { categories: categoryData, loading: categoriesLoading } = useCategories();
+  const { categories: categoryData, loading: categoriesLoading } =
+    useCategories();
   const { accounts: accountData, loading: accountsLoading } = useAccounts();
-  
-  const categories = categoryData.map(cat => cat.name);
-  const accounts = accountData.map(account => account.name);
+
+  const categories = categoryData.map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+  }));
+  const accounts = accountData.map((account) => account.name);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
@@ -238,7 +242,7 @@ export default function Transactions() {
   const processRowUpdate = async (newRow: GridRowModel) => {
     const updatedRow = { ...newRow, isNew: false };
     await updateTransaction(newRow.id, {
-      category: newRow.category,
+      categoryId: newRow.category,
       note: newRow.note,
     });
     return updatedRow;
@@ -278,7 +282,7 @@ export default function Transactions() {
       valueGetter: (params: any) => params.row.account?.name || "Unknown",
       renderCell: (params: any) => (
         <Chip
-          label={params.value}
+          label={`${params.row.account?.emoji || "🏦"} ${params.value}`}
           size="small"
           variant="outlined"
           color={params.value === "Amex" ? "error" : "default"}
@@ -291,10 +295,13 @@ export default function Transactions() {
       width: 150,
       editable: true,
       type: "singleSelect",
-      valueOptions: categories,
+      valueOptions: categories.map((cat) => cat.id),
+      valueGetter: (params: any) => params.row.category?.id || null,
       renderCell: (params: any) => (
         <Chip
-          label={params.value || "Uncategorized"}
+          label={`${params.row.category?.emoji || "📂"} ${
+            params.row.category?.name || "Uncategorized"
+          }`}
           size="small"
           color="primary"
           variant="outlined"
@@ -423,16 +430,25 @@ export default function Transactions() {
                   input={<OutlinedInput label="Categories" />}
                   renderValue={(selected) => (
                     <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                      {selected.map((value) => (
-                        <Chip key={value} label={value} size="small" />
-                      ))}
+                      {selected.map((value) => {
+                        const category = categories.find(
+                          (cat) => cat.id === value
+                        );
+                        return (
+                          <Chip
+                            key={value}
+                            label={category?.name || value}
+                            size="small"
+                          />
+                        );
+                      })}
                     </Box>
                   )}
                   MenuProps={MenuProps}
                 >
                   {categories.map((category) => (
-                    <MenuItem key={category} value={category}>
-                      {category}
+                    <MenuItem key={category.id} value={category.id}>
+                      {category.name}
                     </MenuItem>
                   ))}
                 </Select>

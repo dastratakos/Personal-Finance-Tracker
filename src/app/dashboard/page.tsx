@@ -23,11 +23,23 @@ import {
   AttachMoney as AttachMoneyIcon,
   Category as CategoryIcon,
   Assessment as AssessmentIcon,
-  Refresh as RefreshIcon,
-  Download as DownloadIcon,
 } from "@mui/icons-material";
 import { useState, useEffect } from "react";
-import { DashboardData } from "@/types";
+
+interface DashboardData {
+  netWorth: number;
+  monthlySpend: number;
+  topCategories: Array<{ category: string; amount: number }>;
+  spendByCategory: Record<string, number>;
+  monthlyTrends: Array<{
+    month: string;
+    spend: number;
+    income: number;
+    net: number;
+  }>;
+  accountBreakdown: Record<string, number>;
+  totalTransactions: number;
+}
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);

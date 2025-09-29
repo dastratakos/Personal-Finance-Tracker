@@ -4,30 +4,30 @@ const prisma = new PrismaClient();
 
 // Helper function to create categories
 async function createCategories() {
-  const categoryNames = [
-    "Housing",
-    "Food",
-    "Groceries",
-    "Wellness",
-    "Daily Transport",
-    "Travel",
-    "Technology",
-    "Personal Care",
-    "LEGO",
-    "Clothing",
-    "Gifts",
-    "Entertainment",
-    "Subscription",
-    "Going Out",
-    "Transfer",
+  const categoryData = [
+    { name: "Housing", emoji: "🏠" },
+    { name: "Food", emoji: "🍽️" },
+    { name: "Groceries", emoji: "🛒" },
+    { name: "Wellness", emoji: "💚" },
+    { name: "Daily Transport", emoji: "🚗" },
+    { name: "Travel", emoji: "✈️" },
+    { name: "Technology", emoji: "💻" },
+    { name: "Personal Care", emoji: "🪥" },
+    { name: "LEGO", emoji: "🧱" },
+    { name: "Clothing", emoji: "👕" },
+    { name: "Gifts", emoji: "🎁" },
+    { name: "Entertainment", emoji: "🎬" },
+    { name: "Subscription", emoji: "📱" },
+    { name: "Going Out", emoji: "🍻" },
+    { name: "Transfer", emoji: "🔄" },
   ];
 
   return Promise.all(
-    categoryNames.map((name) =>
+    categoryData.map(({ name, emoji }) =>
       prisma.category.upsert({
         where: { name },
-        update: {},
-        create: { name },
+        update: { emoji },
+        create: { name, emoji },
       })
     )
   );
@@ -40,42 +40,47 @@ async function createAccounts() {
       id: "amex_gold",
       name: "Amex Gold",
       accountType: "Credit Card",
-      icon: "💳",
+      emoji: "💳",
     },
     {
       id: "bilt_mastercard",
       name: "Bilt Mastercard",
       accountType: "Credit Card",
-      icon: "💳",
+      emoji: "💳",
     },
     {
       id: "cit_savings",
       name: "CIT Bank Savings",
       accountType: "Bank",
-      icon: "🏦",
+      emoji: "🏦",
     },
     {
       id: "target_redcard",
       name: "Target RedCard",
       accountType: "Credit Card",
-      icon: "🎯",
+      emoji: "🎯",
     },
     {
       id: "wells_fargo_credit_card",
       name: "Wells Fargo Credit Card",
       accountType: "Credit Card",
-      icon: "💳",
+      emoji: "💳",
     },
-    { id: "vanguard", name: "Vanguard", accountType: "Investment", icon: "📈" },
-    { id: "venmo", name: "Venmo", accountType: "Venmo", icon: "💰" },
+    {
+      id: "vanguard",
+      name: "Vanguard",
+      accountType: "Investment",
+      emoji: "📈",
+    },
+    { id: "venmo", name: "Venmo", accountType: "Venmo", emoji: "💰" },
   ];
 
   return Promise.all(
-    accountData.map(({ id, name, accountType, icon }) =>
+    accountData.map(({ id, name, accountType, emoji }) =>
       prisma.account.upsert({
         where: { id },
         update: {},
-        create: { id, name, accountType, icon },
+        create: { id, name, accountType, emoji },
       })
     )
   );

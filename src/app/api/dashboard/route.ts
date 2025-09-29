@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         account: true,
+        category: true,
       },
     });
 
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     const spendByCategory = transactions
       .filter((t) => Number(t.amount) < 0 && t.category)
       .reduce((acc, t) => {
-        const category = t.category || "Uncategorized";
+        const category = t.category?.name || "Uncategorized";
         acc[category] = (acc[category] || 0) + Math.abs(Number(t.amount));
         return acc;
       }, {} as Record<string, number>);

@@ -1,9 +1,10 @@
 import {
-  TransactionData,
   ParserResult,
   CSVParser,
+  TransactionData,
   tryFindCategory,
   CATEGORY_TO_MERCHANTS,
+  generateTransactionId,
 } from "../import-utils";
 
 export class WellsFargoParser implements CSVParser {
@@ -43,13 +44,17 @@ export class WellsFargoParser implements CSVParser {
     const category = tryFindCategory(merchant, CATEGORY_TO_MERCHANTS);
 
     return {
-      id: undefined,
+      id: generateTransactionId(date, amount, merchant),
+      accountId: "", // Will be set by the import service
       date,
-      amount,
+      amount: new Decimal(amount),
       merchant,
-      category: category || undefined,
-      note: undefined,
-      custom_category: undefined,
+      category: category || null,
+      note: null,
+      custom_category: null,
+      isManual: false,
+      importedAt: new Date(),
+      importId: null,
     };
   }
 

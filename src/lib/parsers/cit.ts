@@ -1,10 +1,11 @@
 import {
-  TransactionData,
   ParserResult,
   CSVParser,
+  TransactionData,
   tryFindCategory,
   CATEGORY_TO_MERCHANTS,
   removeChars,
+  generateTransactionId,
 } from "../import-utils";
 
 const MERCHANT_TO_NOTE: Record<string, string> = {
@@ -68,7 +69,7 @@ export class CITParser implements CSVParser {
     const merchant = fields[3];
     const category = tryFindCategory(merchant, CATEGORY_TO_MERCHANTS);
 
-    let note: string | undefined;
+    let note: string | null = null;
     for (const [merchantPattern, noteText] of Object.entries(
       MERCHANT_TO_NOTE
     )) {
@@ -78,14 +79,20 @@ export class CITParser implements CSVParser {
       }
     }
 
+    const id = generateTransactionId(date, amount, merchant);
+
     return {
-      id: undefined,
+      id,
+      accountId: "", // Will be set by the import service
       date,
-      amount,
+      amount: new Decimal(amount),
       merchant,
-      category: category || undefined,
+      category: category || null,
       note,
-      custom_category: undefined,
+      custom_category: null,
+      isManual: false,
+      importedAt: new Date(),
+      importId: null,
     };
   }
 

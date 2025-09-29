@@ -1,12 +1,5 @@
 import { useState, useEffect } from "react";
-
-interface Account {
-  id: string;
-  name: string;
-  accountType: string;
-  icon: string;
-  createdAt: string;
-}
+import { Account } from "@prisma/client";
 
 interface UseAccountsReturn {
   accounts: Account[];
@@ -25,11 +18,11 @@ export function useAccounts(): UseAccountsReturn {
       setLoading(true);
       setError(null);
       const response = await fetch("/api/accounts");
-      
+
       if (!response.ok) {
         throw new Error("Failed to fetch accounts");
       }
-      
+
       const data = await response.json();
       setAccounts(data);
     } catch (err) {

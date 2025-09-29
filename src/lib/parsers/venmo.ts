@@ -1,8 +1,9 @@
 import {
-  TransactionData,
   ParserResult,
   CSVParser,
+  TransactionData,
   removeChars,
+  generateTransactionId,
 } from "../import-utils";
 
 export class VenmoParser implements CSVParser {
@@ -38,19 +39,19 @@ export class VenmoParser implements CSVParser {
     const fields = this.parseCSVLine(line);
     if (fields.length < 16) return null;
 
-    const id = fields[1];
     const date = new Date(fields[2]);
     const amount = parseFloat(removeChars(fields[8], " +$,"));
 
     const merFrom = fields[6];
     const merTo = fields[7];
     const merchant = merFrom !== "Dean Stratakos" ? merFrom : merTo;
+    const id = fields[1] || generateTransactionId(date, amount, merchant);
 
-    let category: string | undefined;
+    let category: string | null = null;
     const note = fields[5];
 
     // Amex split
-    let amexSplitAmount: string | undefined;
+    let amexSplitAmount: string | null = null;
     if (note.toUpperCase() === note && amount >= 0) {
       amexSplitAmount = amount.toFixed(2);
       category = "Transfer";
@@ -67,34 +68,46 @@ export class VenmoParser implements CSVParser {
         // merchant should be empty for standard transfers
         return {
           id,
+          accountId: "", // Will be set by the import service
           date,
-          amount: 0,
+          amount: new Decimal(0),
           merchant: destination,
           category,
           note: type,
           custom_category: amexSplitAmount,
+          isManual: false,
+          importedAt: new Date(),
+          importId: null,
         };
       } else {
         return {
           id,
+          accountId: "", // Will be set by the import service
           date,
-          amount: 0,
+          amount: new Decimal(0),
           merchant,
           category,
           note: `[${amount} from ${fundingSource}] ${note}`,
           custom_category: amexSplitAmount,
+          isManual: false,
+          importedAt: new Date(),
+          importId: null,
         };
       }
     }
 
     return {
       id,
+      accountId: "", // Will be set by the import service
       date,
-      amount,
+      amount: new Decimal(amount),
       merchant,
       category,
       note,
       custom_category: amexSplitAmount,
+      isManual: false,
+      importedAt: new Date(),
+      importId: null,
     };
   }
 

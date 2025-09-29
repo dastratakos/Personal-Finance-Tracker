@@ -1,5 +1,4 @@
-import { ImportService } from "./import-utils";
-import { ImportResult } from "@/types";
+import { ImportService, ImportResult } from "./import-utils";
 import { PrismaClient } from "@prisma/client";
 import {
   AmexParser,

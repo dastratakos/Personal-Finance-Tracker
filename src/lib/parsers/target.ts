@@ -1,9 +1,10 @@
 import {
-  TransactionData,
   ParserResult,
   CSVParser,
+  TransactionData,
   tryFindCategory,
   CATEGORY_TO_MERCHANTS,
+  generateTransactionId,
 } from "../import-utils";
 
 export class TargetParser implements CSVParser {
@@ -39,7 +40,6 @@ export class TargetParser implements CSVParser {
     const fields = this.parseCSVLine(line);
     if (fields.length < 12) return null;
 
-    const id = fields[11] && fields[11] !== "" ? fields[11] : undefined;
     const date = new Date(fields[2]);
     let amount = parseFloat(fields[10].replace(/[()$]/g, ""));
 
@@ -55,15 +55,23 @@ export class TargetParser implements CSVParser {
     }
 
     const category = tryFindCategory(merchant, CATEGORY_TO_MERCHANTS);
+    const id =
+      fields[11] && fields[11] !== ""
+        ? fields[11]
+        : generateTransactionId(date, amount, merchant);
 
     return {
       id,
+      accountId: "", // Will be set by the import service
       date,
-      amount,
+      amount: new Decimal(amount),
       merchant,
-      category: category || undefined,
-      note: undefined,
-      custom_category: undefined,
+      category: category || null,
+      note: null,
+      custom_category: null,
+      isManual: false,
+      importedAt: new Date(),
+      importId: null,
     };
   }
 

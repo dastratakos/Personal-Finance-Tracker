@@ -34,7 +34,6 @@ import {
   VisibilityOff as VisibilityOffIcon,
 } from "@mui/icons-material";
 import { useState, useEffect } from "react";
-import { NetWorthData } from "@/types";
 import { useAccounts } from "@/hooks/useAccounts";
 
 const timeRanges = ["1M", "3M", "6M", "1Y", "All"];
@@ -48,7 +47,7 @@ export default function NetWorth() {
     ...new Set(accountData.map((account) => account.accountType)),
   ];
 
-  const [data, setData] = useState<NetWorthData | null>(null);
+  const [data, setData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedRange, setSelectedRange] = useState("6M");
@@ -59,45 +58,22 @@ export default function NetWorth() {
   const fetchNetWorthData = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/dashboard");
-      if (!response.ok) throw new Error("Failed to fetch net worth data");
 
-      const dashboardData = await response.json();
+      // TODO: Implement proper net worth calculation logic
+      // This should calculate net worth from actual account balances over time
+      // and generate proper historical trends based on imported data
 
-      // Calculate net worth trends
-      const currentMonth = new Date().toISOString().substring(0, 7);
-      const previousMonth = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .substring(0, 7);
+      // Placeholder data for now
+      const mockData = {
+        currentNetWorth: 0,
+        previousNetWorth: 0,
+        change: 0,
+        changePercentage: 0,
+        accountBreakdown: {},
+        monthlyTrends: [],
+      };
 
-      const currentNetWorth = dashboardData.netWorth;
-      const previousNetWorth = currentNetWorth * 0.95; // Mock previous value
-      const change = currentNetWorth - previousNetWorth;
-      const changePercentage = (change / previousNetWorth) * 100;
-
-      // Generate monthly trends (last 6 months)
-      const monthlyTrends = [];
-      for (let i = 5; i >= 0; i--) {
-        const month = new Date(Date.now() - i * 30 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .substring(0, 7);
-        const baseValue = currentNetWorth * (0.8 + i * 0.04);
-        monthlyTrends.push({
-          month,
-          netWorth: baseValue,
-          assets: baseValue * 1.1,
-          liabilities: baseValue * 0.1,
-        });
-      }
-
-      setData({
-        currentNetWorth,
-        previousNetWorth,
-        change,
-        changePercentage,
-        accountBreakdown: dashboardData.accountBreakdown,
-        monthlyTrends,
-      });
+      setData(mockData);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load net worth data"

@@ -1,7 +1,7 @@
 import {
-  TransactionData,
   ParserResult,
   CSVParser,
+  TransactionData,
   tryFindCategory,
   CATEGORY_TO_MERCHANTS,
 } from "../import-utils";

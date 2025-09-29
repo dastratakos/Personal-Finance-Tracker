@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (category) {
-      where.category = category;
+      where.categoryId = category;
     }
 
     if (account) {
@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
         include: {
           account: true,
           import: true,
+          category: true,
         },
         orderBy: { date: "desc" },
         skip,
@@ -90,6 +91,7 @@ export async function PATCH(request: NextRequest) {
       include: {
         account: true,
         import: true,
+        category: true,
       },
     });
 

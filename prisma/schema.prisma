@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,75 +8,68 @@ datasource db {
 }
 
 model Transaction {
-  id              String   @id                 // source id or computed fingerprint
-  accountId       String                       // FK to Account.id
+  id              String    @id
+  accountId       String
   date            DateTime
   amount          Decimal
   merchant        String?
-  category        String?
+  categoryId      String?
   note            String?
   custom_category String?
-  isManual        Boolean   @default(false)    // set if user edited
+  isManual        Boolean   @default(false)
   importedAt      DateTime  @default(now())
-  importId        String?                      // FK to Import.id
-  
-  // Relations
-  account         Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  import          Import?  @relation(fields: [importId], references: [id], onDelete: Cascade)
-  
+  importId        String?
+  category        Category? @relation(fields: [categoryId], references: [id])
+  account         Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  import          Import?   @relation(fields: [importId], references: [id], onDelete: Cascade)
+
   @@map("transactions")
 }
 
 model Import {
-  id        String   @id @default(cuid())
-  filename  String
-  checksum  String
-  accountId String
-  importedAt DateTime @default(now())
-  
-  // Relations
-  account     Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  id           String        @id @default(cuid())
+  filename     String
+  checksum     String
+  accountId    String
+  importedAt   DateTime      @default(now())
+  account      Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
   transactions Transaction[]
-  
+
   @@map("imports")
 }
 
 model Budget {
-  id          String   @id @default(cuid())
-  categoryId  String
-  amount      Decimal
-  startDate   DateTime
-  endDate     DateTime?   // null = indefinite
-  createdAt   DateTime @default(now())
-  
-  // Relations
-  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  
+  id         String    @id @default(cuid())
+  categoryId String
+  amount     Decimal
+  startDate  DateTime
+  endDate    DateTime?
+  createdAt  DateTime  @default(now())
+  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
   @@unique([categoryId, startDate], name: "categoryId_startDate")
   @@map("budgets")
 }
 
 model Account {
-  id          String   @id @default(cuid())
-  name        String                                 // e.g. "Amex", "Wells Fargo"
-  accountType String                                 // "Bank", "Credit Card", "Investment", "Venmo"
-  icon        String                                 // Emoji for the account
-  createdAt   DateTime @default(now())
-  
-  // Relations
+  id           String        @id @default(cuid())
+  name         String
+  accountType  String
+  emoji        String
+  createdAt    DateTime      @default(now())
+  imports      Import[]
   transactions Transaction[]
-  imports     Import[]
-  
+
   @@map("accounts")
 }
 
 model Category {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  createdAt   DateTime @default(now())
-  
-  // Relations
-  budgets     Budget[]
-  
+  id           String        @id @default(cuid())
+  name         String        @unique
+  emoji        String
+  createdAt    DateTime      @default(now())
+  budgets      Budget[]
+  transactions Transaction[]
+
   @@map("categories")
 }

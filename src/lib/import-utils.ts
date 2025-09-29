@@ -1,11 +1,34 @@
 import { PrismaClient } from "@prisma/client";
 import { createHash } from "crypto";
-import {
-  TransactionData,
-  ImportResult,
-  ParserResult,
-  CSVParser,
-} from "@/types";
+import { Transaction } from "@prisma/client";
+
+export interface TransactionData {
+  id?: string;
+  date: Date;
+  amount: number;
+  merchant?: string;
+  category?: string;
+  note?: string;
+  custom_category?: string;
+}
+
+export interface ImportResult {
+  success: boolean;
+  message: string;
+  importedCount: number;
+  duplicateCount: number;
+  importId?: string;
+}
+
+export interface ParserResult {
+  transactions: TransactionData[];
+  accountName: string;
+  accountType?: string;
+}
+
+export interface CSVParser {
+  parse(csvContent: string, filename: string): ParserResult;
+}
 
 export class ImportService {
   private prisma: PrismaClient;
@@ -116,6 +139,15 @@ export class ImportService {
       const transactionId =
         transaction.id || this.generateTransactionId(transaction);
 
+      // Look up category ID if category name is provided
+      let categoryId: string | null = null;
+      if (transaction.category) {
+        const category = await this.prisma.category.findFirst({
+          where: { name: transaction.category },
+        });
+        categoryId = category?.id || null;
+      }
+
       // Check if transaction already exists
       const existing = await this.prisma.transaction.findUnique({
         where: { id: transactionId },
@@ -131,7 +163,7 @@ export class ImportService {
               amount: transaction.amount,
               merchant: transaction.merchant,
               // Only update category/note if they're currently null
-              category: existing.category || transaction.category,
+              categoryId: existing.categoryId || categoryId,
               note: existing.note || transaction.note,
               custom_category: transaction.custom_category,
             },
@@ -147,7 +179,7 @@ export class ImportService {
             date: transaction.date,
             amount: transaction.amount,
             merchant: transaction.merchant,
-            category: transaction.category,
+            categoryId,
             note: transaction.note,
             custom_category: transaction.custom_category,
             importId,
@@ -169,6 +201,18 @@ export class ImportService {
     }`;
     return createHash("md5").update(key).digest("hex");
   }
+}
+
+/**
+ * Generate transaction ID from transaction data
+ */
+export function generateTransactionId(
+  date: Date,
+  amount: number,
+  merchant: string
+): string {
+  const key = `${date.toISOString()}-${amount}-${merchant}`;
+  return createHash("md5").update(key).digest("hex");
 }
 
 /**

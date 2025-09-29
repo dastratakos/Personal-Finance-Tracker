@@ -39,13 +39,13 @@ import {
   CalendarToday as CalendarIcon,
 } from "@mui/icons-material";
 import { useState, useEffect } from "react";
-import { Budget, BudgetWithSpend } from "@/types";
 import { useCategories } from "@/hooks/useCategories";
+import { Budget } from "@prisma/client";
 
 export default function Budgets() {
   const { categories: categoryData } = useCategories();
-  const categories = categoryData.map(cat => cat.name);
-  
+  const categories = categoryData.map((cat) => cat.name);
+
   const [budgets, setBudgets] = useState<BudgetWithSpend[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -305,7 +305,7 @@ export default function Budgets() {
                           <AttachMoneyIcon />
                         </Avatar>
                       }
-                      title={budget.category.name}
+                      title={`${budget.category.emoji} ${budget.category.name}`}
                       action={
                         <Box sx={{ display: "flex", gap: 1 }}>
                           <IconButton

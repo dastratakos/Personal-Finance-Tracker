@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, accountType } = await request.json();
+    const { name, accountType, emoji } = await request.json();
 
     if (!name) {
       return NextResponse.json(
@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         accountType,
+        emoji: emoji || "🏦", // Default emoji if not provided
       },
     });
 

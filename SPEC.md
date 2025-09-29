@@ -196,3 +196,35 @@ All pages accessible from a left nav: Dashboard, Transactions, Budgets, Net Wort
   - Updated Import model to use accountId foreign key relationship instead of account string.
   - Created database migration to convert Import.source to Import.accountId with proper foreign key.
   - Updated all code to use the new account relationship structure.
+- [x] **Parser standardization**:
+  - Updated all parser classes to return proper Transaction objects from @prisma/client.
+  - Fixed WellsFargoParser, VenmoParser, TargetParser, and CITParser to use Transaction type instead of TransactionData.
+  - Added missing Decimal imports to AmexParser and BiltParser.
+  - Ensured all parsers return complete Transaction objects with all required fields (id, accountId, date, amount, merchant, category, note, custom_category, isManual, importedAt, importId).
+  - Added generateTransactionId methods to parsers that were missing them for proper idempotent import handling.
+- [x] **Transaction category foreign key migration**:
+  - Updated Transaction model to use categoryId foreign key instead of category string field.
+  - Created database migration to convert category string to categoryId foreign key relationship.
+  - Updated all API routes to handle the new category relationship with proper includes.
+  - Updated import parsers to return TransactionData objects instead of Prisma Transaction objects.
+  - Updated import service to handle category ID lookup during transaction processing.
+  - Updated UI components to work with the new category relationship structure.
+  - Updated transactions page to display category names from the relationship and handle category editing with IDs.
+  - Regenerated Prisma client to reflect the new schema changes.
+- [x] **Settings page API integration**:
+  - Updated settings page to use dynamic data from API endpoints instead of hard-coded values.
+  - Replaced hardcoded defaultCategories with dynamic data from useCategories hook.
+  - Implemented full category CRUD operations (create, update, delete) using API endpoints.
+  - Added PATCH and DELETE methods to categories API route.
+  - Updated category management UI with proper edit and delete functionality.
+  - Integrated useAccounts and useCategories hooks for real-time data fetching.
+- [x] **Category icon support**:
+  - Added icon field to Category model in Prisma schema.
+  - Created database migration to add icon field with emoji defaults for existing categories.
+  - Updated seed file to include emoji icons for default categories.
+  - Updated TypeScript interfaces to include icon field.
+  - Updated categories API route to handle icon field in create and update operations.
+  - Updated settings page to display category icons alongside names in a single column.
+  - Simplified category dialog to use text input for emoji selection instead of icon picker.
+  - Updated transactions page to show category icons with names in chips.
+  - Updated budgets page to display category icons with names in card titles.

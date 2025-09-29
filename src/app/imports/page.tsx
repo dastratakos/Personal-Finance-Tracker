@@ -46,10 +46,10 @@ import {
   Description as DescriptionIcon,
 } from "@mui/icons-material";
 import { useState, useEffect } from "react";
-import { ImportRecord, Account } from "@/types";
+import { Import, Account } from "@prisma/client";
 
 export default function Imports() {
-  const [imports, setImports] = useState<ImportRecord[]>([]);
+  const [imports, setImports] = useState<Import[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -200,7 +200,7 @@ export default function Imports() {
           <CardHeader
             title="Supported Accounts"
             titleTypographyProps={{ fontWeight: 600 }}
-            subheader="We automatically detect the account based on your filename"
+            subheader="Account is automatically detected based on the filename"
           />
           <CardContent>
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
@@ -217,7 +217,7 @@ export default function Imports() {
                   }}
                 >
                   <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <Typography variant="h4">{account.icon}</Typography>
+                    <Typography variant="h4">{account.emoji}</Typography>
                     <Box>
                       <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                         {account.name}
@@ -381,9 +381,9 @@ export default function Imports() {
             <Box sx={{ py: 2 }}>
               <Alert severity="info" sx={{ mb: 3 }}>
                 <Typography variant="body2">
-                  <strong>Tip:</strong> Include the account name in your filename
-                  (e.g., "Amex", "Wells Fargo", "Venmo") for automatic account
-                  detection.
+                  <strong>Tip:</strong> Include the account name in your
+                  filename (e.g., "Amex", "Wells Fargo", "Venmo") for automatic
+                  account detection.
                 </Typography>
               </Alert>
 
