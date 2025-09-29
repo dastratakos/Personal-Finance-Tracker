@@ -5,6 +5,7 @@ export async function GET(request: NextRequest) {
   try {
     const imports = await prisma.import.findMany({
       include: {
+        account: true,
         transactions: {
           select: {
             id: true,
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
       orderBy: { importedAt: "desc" },
     });
 
-    const importsWithCounts = imports.map((importRecord) => ({
+    const importsWithCounts = imports.map((importRecord: any) => ({
       ...importRecord,
       transactionCount: importRecord.transactions.length,
     }));

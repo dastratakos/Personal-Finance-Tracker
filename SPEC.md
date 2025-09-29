@@ -6,9 +6,9 @@ Build a local-first personal finance tracker that ingests normalized CSVs from m
 
 - Local persistence: All data stored in a local SQLite DB managed by Prisma. App runs locally.
 - Idempotent ingestion: Re-importing the same CSV(s) or overlapping CSVs must not create duplicate transactions.
-- Normalized transaction model: Transactions have id (source id or computed), source, date, amount, merchant, category, note, is_manual.
+- Normalized transaction model: Transactions have id (source id or computed), accountId, date, amount, merchant, category, note, is_manual.
 - Editable transactions: User can edit Category and Note inline; edits persist and protect fields from being overwritten by future imports (unless user explicitly requests).
-- Transactions table UI: Filters (source, category, date range), sort, pagination/virtualized scrolling, inline edit, bulk edit, search, export.
+- Transactions table UI: Filters (account, category, date range), sort, pagination/virtualized scrolling, inline edit, bulk edit, search, export.
 - Insights: Spend by category per month, category breakdown, monthly totals, Sankey flow (income → accounts → categories → merchants).
 - Budgets: Per-category budgets with monthly recurrence and future-effective overrides. Dashboard shows actual vs budget.
 - Net worth: Ingest balances snapshot. Show line chart of net worth over time.
@@ -50,7 +50,7 @@ model Import {
   id        String   @id @default(cuid())
   filename  String
   checksum  String
-  source    String
+  account   String
   importedAt DateTime @default(now())
 }
 
@@ -175,3 +175,24 @@ All pages accessible from a left nav: Dashboard, Transactions, Budgets, Net Wort
   - Created seed file with default categories, accounts, and budgets.
   - Successfully migrated and seeded database.
   - Refactored seed file to eliminate code duplication with reusable helper functions.
+- [x] **Interface consolidation**:
+  - Created shared types file (`src/types/index.ts`) with all TypeScript interfaces.
+  - Consolidated all interfaces from individual files into centralized location.
+  - Updated all components to import interfaces from shared types file.
+  - Removed duplicate interface definitions across the codebase.
+  - Added type guards and constants for better type safety.
+- [x] **Dynamic categories and sources**:
+  - Removed hard-coded CATEGORIES and SOURCES constants from types file.
+  - Created API endpoint (`/api/categories`) to fetch categories from database.
+  - Reused existing `/api/accounts` endpoint for fetching account data.
+  - Created custom hooks (`useCategories`, `useAccounts`) for dynamic data fetching.
+  - Updated components to fetch categories and accounts dynamically from database.
+  - Categories are now managed through the Prisma Category model.
+  - Updated net-worth page to use dynamic account types from database with "All" option.
+  - Renamed `useSources` hook to `useAccounts` for better semantic clarity.
+  - Updated all references from "source" to "account" throughout the codebase.
+  - Updated Import table and related interfaces to use "account" terminology.
+  - Updated transactions page filters and API endpoints to use "account" instead of "source".
+  - Updated Import model to use accountId foreign key relationship instead of account string.
+  - Created database migration to convert Import.source to Import.accountId with proper foreign key.
+  - Updated all code to use the new account relationship structure.

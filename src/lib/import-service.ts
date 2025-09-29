@@ -1,4 +1,5 @@
-import { ImportService, ImportResult } from "./import-utils";
+import { ImportService } from "./import-utils";
+import { ImportResult } from "@/types";
 import { PrismaClient } from "@prisma/client";
 import {
   AmexParser,
@@ -27,8 +28,8 @@ export class ImportCoordinator {
 
   async importCSV(filename: string, csvContent: string): Promise<ImportResult> {
     try {
-      // Detect source from filename
-      const source = this.importService.detectSource(filename);
+      // Detect account from filename
+      const accountName = this.importService.detectAccount(filename);
 
       // Calculate checksum for deduplication
       const checksum = this.importService.calculateChecksum(csvContent);
@@ -47,12 +48,12 @@ export class ImportCoordinator {
         };
       }
 
-      // Get parser for source
-      const parser = this.parsers.get(source);
+      // Get parser for account
+      const parser = this.parsers.get(accountName);
       if (!parser) {
         return {
           success: false,
-          message: `No parser available for source: ${source}`,
+          message: `No parser available for account: ${accountName}`,
           importedCount: 0,
           duplicateCount: 0,
         };
@@ -61,17 +62,17 @@ export class ImportCoordinator {
       // Parse CSV content
       const parseResult = parser.parse(csvContent, filename);
 
-      // Create import record
-      const importId = await this.importService.createImport(
-        filename,
-        checksum,
-        source
-      );
-
       // Get or create account
       const accountId = await this.importService.getOrCreateAccount(
         parseResult.accountName,
         parseResult.accountType
+      );
+
+      // Create import record
+      const importId = await this.importService.createImport(
+        filename,
+        checksum,
+        accountId
       );
 
       // Process transactions

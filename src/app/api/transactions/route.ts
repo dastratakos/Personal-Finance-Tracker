@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "25");
     const search = searchParams.get("search") || "";
     const category = searchParams.get("category") || "";
-    const source = searchParams.get("source") || "";
+    const account = searchParams.get("account") || "";
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
       where.category = category;
     }
 
-    if (source) {
-      where.account = { name: source };
+    if (account) {
+      where.account = { name: account };
     }
 
     if (startDate || endDate) {

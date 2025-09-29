@@ -34,10 +34,11 @@ model Import {
   id        String   @id @default(cuid())
   filename  String
   checksum  String
-  source    String
+  accountId String
   importedAt DateTime @default(now())
   
   // Relations
+  account     Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
   transactions Transaction[]
   
   @@map("imports")
@@ -66,6 +67,7 @@ model Account {
   
   // Relations
   transactions Transaction[]
+  imports     Import[]
   
   @@map("accounts")
 }

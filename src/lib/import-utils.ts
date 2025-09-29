@@ -1,33 +1,11 @@
 import { PrismaClient } from "@prisma/client";
 import { createHash } from "crypto";
-
-export interface TransactionData {
-  id?: string;
-  date: Date;
-  amount: number;
-  merchant?: string;
-  category?: string;
-  note?: string;
-  custom_category?: string;
-}
-
-export interface ImportResult {
-  success: boolean;
-  message: string;
-  importedCount: number;
-  duplicateCount: number;
-  importId?: string;
-}
-
-export interface ParserResult {
-  transactions: TransactionData[];
-  accountName: string;
-  accountType?: string;
-}
-
-export interface CSVParser {
-  parse(csvContent: string, filename: string): ParserResult;
-}
+import {
+  TransactionData,
+  ImportResult,
+  ParserResult,
+  CSVParser,
+} from "@/types";
 
 export class ImportService {
   private prisma: PrismaClient;
@@ -37,9 +15,9 @@ export class ImportService {
   }
 
   /**
-   * Detect source from filename pattern
+   * Detect account from filename pattern
    */
-  detectSource(filename: string): string {
+  detectAccount(filename: string): string {
     if (filename.includes("Amex Gold")) {
       return "Amex";
     } else if (filename.includes("Wells Fargo")) {
@@ -88,13 +66,13 @@ export class ImportService {
   async createImport(
     filename: string,
     checksum: string,
-    source: string
+    accountId: string
   ): Promise<string> {
     const importRecord = await this.prisma.import.create({
       data: {
         filename,
         checksum,
-        source,
+        accountId,
       },
     });
     return importRecord.id;

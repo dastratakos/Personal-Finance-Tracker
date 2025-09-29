@@ -40,13 +40,7 @@ import {
   AccountBalance as AccountBalanceIcon,
 } from "@mui/icons-material";
 import { useState, useEffect } from "react";
-
-interface Account {
-  id: string;
-  name: string;
-  accountType?: string;
-  createdAt: string;
-}
+import { Account } from "@/types";
 
 const accountTypes = ["Bank", "Credit Card", "Investment", "Other"];
 

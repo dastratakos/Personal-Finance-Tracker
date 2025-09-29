@@ -45,6 +45,9 @@ import {
   Cancel as CancelIcon,
 } from "@mui/icons-material";
 import { useState, useEffect, useCallback } from "react";
+import { Transaction } from "@/types";
+import { useCategories } from "@/hooks/useCategories";
+import { useAccounts } from "@/hooks/useAccounts";
 
 const ITEM_HEIGHT = 48;
 const ITEM_PADDING_TOP = 8;
@@ -57,55 +60,15 @@ const MenuProps = {
   },
 };
 
-const categories = [
-  "Housing",
-  "Food",
-  "Groceries",
-  "Wellness",
-  "Daily Transport",
-  "Travel",
-  "Technology",
-  "Personal Care",
-  "LEGO",
-  "Clothing",
-  "Gifts",
-  "Entertainment",
-  "Subscription",
-  "Going Out",
-  "Transfer",
-];
-
-const sources = [
-  "Amex",
-  "Wells Fargo",
-  "Venmo",
-  "Vanguard",
-  "Target",
-  "CIT",
-  "Bilt",
-];
-
-interface Transaction {
-  id: string;
-  date: string;
-  amount: number;
-  merchant?: string;
-  category?: string;
-  note?: string;
-  isManual: boolean;
-  account: {
-    name: string;
-  };
-  import?: {
-    filename: string;
-    importedAt: string;
-  };
-}
-
 export default function Transactions() {
+  const { categories: categoryData, loading: categoriesLoading } = useCategories();
+  const { accounts: accountData, loading: accountsLoading } = useAccounts();
+  
+  const categories = categoryData.map(cat => cat.name);
+  const accounts = accountData.map(account => account.name);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedSources, setSelectedSources] = useState<string[]>([]);
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,7 +91,7 @@ export default function Transactions() {
         limit: pagination.pageSize.toString(),
         search: searchTerm,
         category: selectedCategories.join(","),
-        source: selectedSources.join(","),
+        account: selectedAccounts.join(","),
       });
 
       const response = await fetch(`/api/transactions?${params}`);
@@ -153,7 +116,7 @@ export default function Transactions() {
     pagination.pageSize,
     searchTerm,
     selectedCategories,
-    selectedSources,
+    selectedAccounts,
   ]);
 
   // Update transaction
@@ -239,9 +202,9 @@ export default function Transactions() {
     setSelectedCategories(typeof value === "string" ? value.split(",") : value);
   };
 
-  const handleSourceChange = (event: SelectChangeEvent<string[]>) => {
+  const handleAccountChange = (event: SelectChangeEvent<string[]>) => {
     const value = event.target.value;
-    setSelectedSources(typeof value === "string" ? value.split(",") : value);
+    setSelectedAccounts(typeof value === "string" ? value.split(",") : value);
   };
 
   const handleRowSelectionChange = (newSelection: any) => {
@@ -310,7 +273,7 @@ export default function Transactions() {
     },
     {
       field: "account",
-      headerName: "Source",
+      headerName: "Account",
       width: 120,
       valueGetter: (params: any) => params.row.account?.name || "Unknown",
       renderCell: (params: any) => (
@@ -476,12 +439,12 @@ export default function Transactions() {
               </FormControl>
 
               <FormControl sx={{ minWidth: 200 }}>
-                <InputLabel>Sources</InputLabel>
+                <InputLabel>Accounts</InputLabel>
                 <Select
                   multiple
-                  value={selectedSources}
-                  onChange={handleSourceChange}
-                  input={<OutlinedInput label="Sources" />}
+                  value={selectedAccounts}
+                  onChange={handleAccountChange}
+                  input={<OutlinedInput label="Accounts" />}
                   renderValue={(selected) => (
                     <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
                       {selected.map((value) => (
@@ -491,9 +454,9 @@ export default function Transactions() {
                   )}
                   MenuProps={MenuProps}
                 >
-                  {sources.map((source) => (
-                    <MenuItem key={source} value={source}>
-                      {source}
+                  {accounts.map((account) => (
+                    <MenuItem key={account} value={account}>
+                      {account}
                     </MenuItem>
                   ))}
                 </Select>

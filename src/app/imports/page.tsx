@@ -46,23 +46,7 @@ import {
   Description as DescriptionIcon,
 } from "@mui/icons-material";
 import { useState, useEffect } from "react";
-
-interface ImportRecord {
-  id: string;
-  filename: string;
-  checksum: string;
-  source: string;
-  importedAt: string;
-  transactionCount: number;
-}
-
-interface Account {
-  id: string;
-  name: string;
-  accountType: string;
-  icon: string;
-  createdAt: string;
-}
+import { ImportRecord, Account } from "@/types";
 
 export default function Imports() {
   const [imports, setImports] = useState<ImportRecord[]>([]);
@@ -198,7 +182,7 @@ export default function Imports() {
             Imports
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            Import your financial data from various sources. Re-uploading the
+            Import your financial data from various accounts. Re-uploading the
             same files won't create duplicates.
           </Typography>
           <Button
@@ -211,12 +195,12 @@ export default function Imports() {
           </Button>
         </Box>
 
-        {/* Supported Sources */}
+        {/* Supported Accounts */}
         <Card sx={{ mb: 4 }}>
           <CardHeader
-            title="Supported Sources"
+            title="Supported Accounts"
             titleTypographyProps={{ fontWeight: 600 }}
-            subheader="We automatically detect the source based on your filename"
+            subheader="We automatically detect the account based on your filename"
           />
           <CardContent>
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
@@ -283,7 +267,7 @@ export default function Imports() {
                   <TableHead>
                     <TableRow>
                       <TableCell>File</TableCell>
-                      <TableCell>Source</TableCell>
+                      <TableCell>Account</TableCell>
                       <TableCell>Status</TableCell>
                       <TableCell>Transactions</TableCell>
                       <TableCell>Date</TableCell>
@@ -309,7 +293,7 @@ export default function Imports() {
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={importItem.source}
+                            label={importItem.account.name}
                             size="small"
                             variant="outlined"
                           />
@@ -397,8 +381,8 @@ export default function Imports() {
             <Box sx={{ py: 2 }}>
               <Alert severity="info" sx={{ mb: 3 }}>
                 <Typography variant="body2">
-                  <strong>Tip:</strong> Include the source name in your filename
-                  (e.g., "amex_", "wells_", "venmo_") for automatic source
+                  <strong>Tip:</strong> Include the account name in your filename
+                  (e.g., "Amex", "Wells Fargo", "Venmo") for automatic account
                   detection.
                 </Typography>
               </Alert>

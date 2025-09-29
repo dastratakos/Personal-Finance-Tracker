@@ -34,25 +34,20 @@ import {
   VisibilityOff as VisibilityOffIcon,
 } from "@mui/icons-material";
 import { useState, useEffect } from "react";
-
-interface NetWorthData {
-  currentNetWorth: number;
-  previousNetWorth: number;
-  change: number;
-  changePercentage: number;
-  accountBreakdown: Record<string, number>;
-  monthlyTrends: Array<{
-    month: string;
-    netWorth: number;
-    assets: number;
-    liabilities: number;
-  }>;
-}
+import { NetWorthData } from "@/types";
+import { useAccounts } from "@/hooks/useAccounts";
 
 const timeRanges = ["1M", "3M", "6M", "1Y", "All"];
-const accountTypes = ["All", "Bank", "Credit Card", "Investment", "Other"];
 
 export default function NetWorth() {
+  const { accounts: accountData, loading: accountsLoading } = useAccounts();
+
+  // Create dynamic account types from the database, with "All" as the first option
+  const accountTypes = [
+    "All",
+    ...new Set(accountData.map((account) => account.accountType)),
+  ];
+
   const [data, setData] = useState<NetWorthData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -129,7 +124,7 @@ export default function NetWorth() {
     setSelectedAccountType(event.target.value);
   };
 
-  if (loading) {
+  if (loading || accountsLoading) {
     return (
       <Layout>
         <Container maxWidth="xl" sx={{ py: 2 }}>

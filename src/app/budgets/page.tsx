@@ -39,40 +39,13 @@ import {
   CalendarToday as CalendarIcon,
 } from "@mui/icons-material";
 import { useState, useEffect } from "react";
-
-interface Budget {
-  id: string;
-  category: string;
-  amount: number;
-  startDate: string;
-  endDate?: string;
-  createdAt: string;
-}
-
-interface BudgetWithSpend extends Budget {
-  actualSpend: number;
-  remaining: number;
-  percentage: number;
-}
-
-const categories = [
-  "Housing",
-  "Food",
-  "Groceries",
-  "Wellness",
-  "Daily Transport",
-  "Travel",
-  "Technology",
-  "Personal Care",
-  "LEGO",
-  "Clothing",
-  "Gifts",
-  "Entertainment",
-  "Subscription",
-  "Going Out",
-];
+import { Budget, BudgetWithSpend } from "@/types";
+import { useCategories } from "@/hooks/useCategories";
 
 export default function Budgets() {
+  const { categories: categoryData } = useCategories();
+  const categories = categoryData.map(cat => cat.name);
+  
   const [budgets, setBudgets] = useState<BudgetWithSpend[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
