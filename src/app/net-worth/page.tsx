@@ -158,13 +158,13 @@ export default function NetWorth() {
   );
 
   const totalAssets = accounts
-    .filter((acc) => acc.balance > 0)
-    .reduce((sum, acc) => sum + acc.balance, 0);
+    .filter((acc) => Number(acc.balance) > 0)
+    .reduce((sum, acc) => sum + Number(acc.balance), 0);
 
   const totalLiabilities = Math.abs(
     accounts
-      .filter((acc) => acc.balance < 0)
-      .reduce((sum, acc) => sum + acc.balance, 0)
+      .filter((acc) => Number(acc.balance) < 0)
+      .reduce((sum, acc) => sum + Number(acc.balance), 0)
   );
 
   return (
@@ -405,13 +405,13 @@ export default function NetWorth() {
                         height: 40,
                         borderRadius: "50%",
                         bgcolor:
-                          account.balance > 0 ? "success.light" : "error.light",
+                          Number(account.balance) > 0 ? "success.light" : "error.light",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                       }}
                     >
-                      {account.balance > 0 ? (
+                      {Number(account.balance) > 0 ? (
                         <SavingsIcon color="success" />
                       ) : (
                         <CreditCardIcon color="error" />
@@ -433,10 +433,10 @@ export default function NetWorth() {
                       sx={{
                         fontWeight: 600,
                         color:
-                          account.balance > 0 ? "success.main" : "error.main",
+                          Number(account.balance) > 0 ? "success.main" : "error.main",
                       }}
                     >
-                      ${Math.abs(account.balance).toLocaleString()}
+                      ${Math.abs(Number(account.balance)).toLocaleString()}
                     </Typography>
                     <Box
                       sx={{ display: "flex", alignItems: "center", gap: 0.5 }}

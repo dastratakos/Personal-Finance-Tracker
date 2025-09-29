@@ -36,15 +36,18 @@ import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
   AttachMoney as AttachMoneyIcon,
-  CalendarToday as CalendarIcon,
 } from "@mui/icons-material";
 import { useState, useEffect } from "react";
 import { useCategories } from "@/hooks/useCategories";
-import { Budget } from "@prisma/client";
+import { Budget, Category } from "@prisma/client";
+
+type BudgetWithSpend = Budget & {
+  category: Category;
+  actualSpend: number;
+};
 
 export default function Budgets() {
   const { categories: categoryData } = useCategories();
-  const categories = categoryData.map((cat) => cat.name);
 
   const [budgets, setBudgets] = useState<BudgetWithSpend[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +70,7 @@ export default function Budgets() {
       const response = await fetch("/api/budgets");
       if (!response.ok) throw new Error("Failed to fetch budgets");
 
-      const budgetsData: Budget[] = await response.json();
+      const budgetsData: BudgetWithSpend[] = await response.json();
 
       // Calculate actual spend for each budget
       const budgetsWithSpend = await Promise.all(
@@ -82,14 +85,9 @@ export default function Budgets() {
             .filter((t: any) => t.amount < 0)
             .reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0);
 
-          const remaining = budget.amount - actualSpend;
-          const percentage = (actualSpend / budget.amount) * 100;
-
           return {
             ...budget,
             actualSpend,
-            remaining,
-            percentage: Math.min(percentage, 100),
           };
         })
       );
@@ -173,8 +171,8 @@ export default function Budgets() {
       setFormData({
         categoryId: budget.categoryId,
         amount: budget.amount.toString(),
-        startDate: budget.startDate,
-        endDate: budget.endDate || "",
+        startDate: budget.startDate.toISOString().split('T')[0],
+        endDate: budget.endDate ? budget.endDate.toISOString().split('T')[0] : "",
         isRecurring: false,
       });
     } else {
@@ -200,6 +198,16 @@ export default function Budgets() {
     if (percentage >= 100) return "error";
     if (percentage >= 80) return "warning";
     return "success";
+  };
+
+  const calculateBudgetMetrics = (budget: BudgetWithSpend) => {
+    const budgetAmount = Number(budget.amount);
+    const remaining = budgetAmount - budget.actualSpend;
+    const percentage = (budget.actualSpend / budgetAmount) * 100;
+    return {
+      remaining,
+      percentage: Math.min(percentage, 100),
+    };
   };
 
   return (
@@ -296,8 +304,10 @@ export default function Budgets() {
                 </Card>
               </Grid>
             ) : (
-              budgets.map((budget) => (
-                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={budget.id}>
+              budgets.map((budget) => {
+                const { remaining, percentage } = calculateBudgetMetrics(budget);
+                return (
+                  <Grid size={{ xs: 12, sm: 6, md: 4 }} key={budget.id}>
                   <Card sx={{ height: "100%" }}>
                     <CardHeader
                       avatar={
@@ -305,7 +315,7 @@ export default function Budgets() {
                           <AttachMoneyIcon />
                         </Avatar>
                       }
-                      title={`${budget.category.emoji} ${budget.category.name}`}
+                      title={budget.category.name}
                       action={
                         <Box sx={{ display: "flex", gap: 1 }}>
                           <IconButton
@@ -343,8 +353,8 @@ export default function Budgets() {
                         </Box>
                         <LinearProgress
                           variant="determinate"
-                          value={budget.percentage}
-                          color={getProgressColor(budget.percentage)}
+                          value={percentage}
+                          color={getProgressColor(percentage)}
                           sx={{ height: 8, borderRadius: 4 }}
                         />
                       </Box>
@@ -358,7 +368,7 @@ export default function Budgets() {
                         <Box
                           sx={{ display: "flex", alignItems: "center", gap: 1 }}
                         >
-                          {budget.percentage >= 100 ? (
+                          {percentage >= 100 ? (
                             <TrendingUpIcon color="error" fontSize="small" />
                           ) : (
                             <TrendingDownIcon
@@ -369,25 +379,26 @@ export default function Budgets() {
                           <Typography
                             variant="body2"
                             color={
-                              budget.percentage >= 100
+                              percentage >= 100
                                 ? "error.main"
                                 : "success.main"
                             }
                           >
-                            {budget.percentage.toFixed(1)}% used
+                            {percentage.toFixed(1)}% used
                           </Typography>
                         </Box>
                         <Chip
-                          label={`$${budget.remaining.toFixed(2)} left`}
+                          label={`$${remaining.toFixed(2)} left`}
                           size="small"
-                          color={budget.remaining < 0 ? "error" : "success"}
+                          color={remaining < 0 ? "error" : "success"}
                           variant="outlined"
                         />
                       </Box>
                     </CardContent>
                   </Card>
                 </Grid>
-              ))
+                );
+              })
             )}
           </Grid>
         )}

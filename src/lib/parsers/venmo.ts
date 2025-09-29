@@ -1,3 +1,4 @@
+import { Decimal } from "@prisma/client/runtime/library";
 import {
   ParserResult,
   CSVParser,
@@ -68,46 +69,34 @@ export class VenmoParser implements CSVParser {
         // merchant should be empty for standard transfers
         return {
           id,
-          accountId: "", // Will be set by the import service
           date,
-          amount: new Decimal(0),
+          amount: 0,
           merchant: destination,
-          category,
+          category: category || undefined,
           note: type,
-          custom_category: amexSplitAmount,
-          isManual: false,
-          importedAt: new Date(),
-          importId: null,
+          custom_category: amexSplitAmount || undefined,
         };
       } else {
         return {
           id,
-          accountId: "", // Will be set by the import service
           date,
-          amount: new Decimal(0),
+          amount: 0,
           merchant,
-          category,
+          category: category || undefined,
           note: `[${amount} from ${fundingSource}] ${note}`,
-          custom_category: amexSplitAmount,
-          isManual: false,
-          importedAt: new Date(),
-          importId: null,
+          custom_category: amexSplitAmount || undefined,
         };
       }
     }
 
     return {
       id,
-      accountId: "", // Will be set by the import service
       date,
-      amount: new Decimal(amount),
+      amount: amount,
       merchant,
-      category,
-      note,
-      custom_category: amexSplitAmount,
-      isManual: false,
-      importedAt: new Date(),
-      importId: null,
+      category: category || undefined,
+      note: note || undefined,
+      custom_category: amexSplitAmount || undefined,
     };
   }
 

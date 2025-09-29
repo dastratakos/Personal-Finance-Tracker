@@ -1,3 +1,4 @@
+import { Decimal } from "@prisma/client/runtime/library";
 import {
   ParserResult,
   CSVParser,
@@ -45,16 +46,12 @@ export class WellsFargoParser implements CSVParser {
 
     return {
       id: generateTransactionId(date, amount, merchant),
-      accountId: "", // Will be set by the import service
       date,
-      amount: new Decimal(amount),
+      amount: amount,
       merchant,
-      category: category || null,
-      note: null,
-      custom_category: null,
-      isManual: false,
-      importedAt: new Date(),
-      importId: null,
+      category: category || undefined,
+      note: undefined,
+      custom_category: undefined,
     };
   }
 

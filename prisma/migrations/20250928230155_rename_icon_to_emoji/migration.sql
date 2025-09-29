@@ -30,3 +30,4 @@ DROP TABLE "categories";
 -- Rename new tables to original names
 ALTER TABLE "accounts_new" RENAME TO "accounts";
 ALTER TABLE "categories_new" RENAME TO "categories";
+

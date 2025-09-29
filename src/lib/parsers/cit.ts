@@ -1,3 +1,4 @@
+import { Decimal } from "@prisma/client/runtime/library";
 import {
   ParserResult,
   CSVParser,
@@ -83,16 +84,12 @@ export class CITParser implements CSVParser {
 
     return {
       id,
-      accountId: "", // Will be set by the import service
       date,
-      amount: new Decimal(amount),
-      merchant,
-      category: category || null,
-      note,
-      custom_category: null,
-      isManual: false,
-      importedAt: new Date(),
-      importId: null,
+      amount: amount,
+      merchant: merchant || undefined,
+      category: category || undefined,
+      note: note || undefined,
+      custom_category: undefined,
     };
   }
 

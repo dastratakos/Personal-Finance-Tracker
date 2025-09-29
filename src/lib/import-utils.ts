@@ -1,6 +1,11 @@
 import { PrismaClient } from "@prisma/client";
 import { createHash } from "crypto";
-import { Transaction } from "@prisma/client";
+import { Transaction, Import, Account } from "@prisma/client";
+
+export type ImportWithDetails = Import & {
+  account: Account;
+  transactionCount: number;
+};
 
 export interface TransactionData {
   id?: string;
@@ -116,7 +121,8 @@ export class ImportService {
       account = await this.prisma.account.create({
         data: {
           name,
-          accountType,
+          accountType: accountType || "unknown",
+          emoji: "🏦", // Default emoji for unknown account types
         },
       });
     }

@@ -46,10 +46,11 @@ import {
   Description as DescriptionIcon,
 } from "@mui/icons-material";
 import { useState, useEffect } from "react";
-import { Import, Account } from "@prisma/client";
+import { Account } from "@prisma/client";
+import { ImportWithDetails } from "@/lib/import-utils";
 
 export default function Imports() {
-  const [imports, setImports] = useState<Import[]>([]);
+  const [imports, setImports] = useState<ImportWithDetails[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
