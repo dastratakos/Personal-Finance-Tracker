@@ -27,3 +27,38 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 - **Database**: SQLite with Prisma ORM
 - **Styling**: Material UI with custom dark theme
 - **Icons**: Material UI Icons
+
+## Database Management (Prisma)
+
+**Database Operations:**
+
+```bash
+# Create and apply new migration
+npm run db:migrate
+
+# Reset database (drops all data and re-runs migrations + seed)
+npm run db:reset
+
+# Seed database with default categories, accounts, and budgets
+npm run db:seed
+```
+
+**Schema Changes:**
+
+```bash
+# After modifying prisma/schema.prisma, create migration
+npx prisma migrate dev --name your_migration_name
+
+# Generate Prisma client after schema changes
+npx prisma generate
+```
+
+**Database Inspection:**
+
+```bash
+# Open Prisma Studio (database GUI)
+npx prisma studio
+
+# View database in terminal
+npx prisma db pull
+```
