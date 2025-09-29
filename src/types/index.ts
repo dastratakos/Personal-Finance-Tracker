@@ -43,11 +43,16 @@ export interface Account {
 
 export interface Budget {
   id: string;
-  category: string;
+  categoryId: string;
   amount: number;
   startDate: string;
   endDate?: string;
   createdAt: string;
+  category: {
+    id: string;
+    name: string;
+    createdAt: string;
+  };
 }
 
 export interface BudgetWithSpend extends Budget {

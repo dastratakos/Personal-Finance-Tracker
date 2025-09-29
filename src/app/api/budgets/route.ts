@@ -4,7 +4,14 @@ import { prisma } from "@/lib/prisma";
 export async function GET(request: NextRequest) {
   try {
     const budgets = await prisma.budget.findMany({
-      orderBy: { category: "asc" },
+      include: {
+        category: true,
+      },
+      orderBy: {
+        category: {
+          name: "asc",
+        },
+      },
     });
 
     return NextResponse.json(budgets);
@@ -19,21 +26,24 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { category, amount, startDate, endDate } = await request.json();
+    const { categoryId, amount, startDate, endDate } = await request.json();
 
-    if (!category || !amount || !startDate) {
+    if (!categoryId || !amount || !startDate) {
       return NextResponse.json(
-        { error: "Category, amount, and start date are required" },
+        { error: "Category ID, amount, and start date are required" },
         { status: 400 }
       );
     }
 
     const budget = await prisma.budget.create({
       data: {
-        category,
+        categoryId,
         amount: parseFloat(amount),
         startDate: new Date(startDate),
         endDate: endDate ? new Date(endDate) : null,
+      },
+      include: {
+        category: true,
       },
     });
 
@@ -65,6 +75,9 @@ export async function PATCH(request: NextRequest) {
         amount: updates.amount ? parseFloat(updates.amount) : undefined,
         startDate: updates.startDate ? new Date(updates.startDate) : undefined,
         endDate: updates.endDate ? new Date(updates.endDate) : undefined,
+      },
+      include: {
+        category: true,
       },
     });
 

@@ -55,6 +55,7 @@ model Budget {
   // Relations
   category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   
+  @@unique([categoryId, startDate], name: "categoryId_startDate")
   @@map("budgets")
 }
 

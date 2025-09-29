@@ -53,7 +53,7 @@ export default function Budgets() {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [formData, setFormData] = useState({
-    category: "",
+    categoryId: "",
     amount: "",
     startDate: "",
     endDate: "",
@@ -74,7 +74,7 @@ export default function Budgets() {
         budgetsData.map(async (budget) => {
           const currentMonth = new Date().toISOString().substring(0, 7);
           const response = await fetch(
-            `/api/transactions?category=${budget.category}&startDate=${currentMonth}-01&endDate=${currentMonth}-31`
+            `/api/transactions?category=${budget.category.name}&startDate=${currentMonth}-01&endDate=${currentMonth}-31`
           );
           const data = await response.json();
 
@@ -110,7 +110,7 @@ export default function Budgets() {
   const saveBudget = async () => {
     try {
       const budgetData = {
-        category: formData.category,
+        categoryId: formData.categoryId,
         amount: parseFloat(formData.amount),
         startDate: formData.startDate,
         endDate: formData.endDate || null,
@@ -159,7 +159,7 @@ export default function Budgets() {
 
   const resetForm = () => {
     setFormData({
-      category: "",
+      categoryId: "",
       amount: "",
       startDate: "",
       endDate: "",
@@ -171,7 +171,7 @@ export default function Budgets() {
   const handleOpenDialog = (budget?: Budget) => {
     if (budget) {
       setFormData({
-        category: budget.category,
+        categoryId: budget.categoryId,
         amount: budget.amount.toString(),
         startDate: budget.startDate,
         endDate: budget.endDate || "",
@@ -305,7 +305,7 @@ export default function Budgets() {
                           <AttachMoneyIcon />
                         </Avatar>
                       }
-                      title={budget.category}
+                      title={budget.category.name}
                       action={
                         <Box sx={{ display: "flex", gap: 1 }}>
                           <IconButton
@@ -407,15 +407,15 @@ export default function Budgets() {
               <FormControl fullWidth sx={{ mb: 3 }}>
                 <InputLabel>Category</InputLabel>
                 <Select
-                  value={formData.category}
+                  value={formData.categoryId}
                   onChange={(e) =>
-                    handleInputChange("category", e.target.value)
+                    handleInputChange("categoryId", e.target.value)
                   }
                   label="Category"
                 >
-                  {categories.map((category) => (
-                    <MenuItem key={category} value={category}>
-                      {category}
+                  {categoryData.map((category) => (
+                    <MenuItem key={category.id} value={category.id}>
+                      {category.name}
                     </MenuItem>
                   ))}
                 </Select>

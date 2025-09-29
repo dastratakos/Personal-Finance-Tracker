@@ -109,8 +109,18 @@ async function createBudgets(categories: any[]) {
         throw new Error(`Category ${name} not found`);
       }
 
-      return prisma.budget.create({
-        data: {
+      return prisma.budget.upsert({
+        where: {
+          categoryId_startDate: {
+            categoryId: category.id,
+            startDate: currentMonth,
+          },
+        },
+        update: {
+          amount,
+          endDate: null,
+        },
+        create: {
           categoryId: category.id,
           amount,
           startDate: currentMonth,
