@@ -258,7 +258,16 @@ export default function Transactions() {
       headerName: "Date",
       width: 120,
       type: "date",
-      valueGetter: (params: any) => new Date(params.value),
+      valueGetter: (params: any) => {
+        if (!params || !params.value) return null;
+        const date = new Date(params.value);
+        return isNaN(date.getTime()) ? null : date;
+      },
+      valueFormatter: (params: any) => {
+        if (!params || !params.value) return "";
+        const date = new Date(params.value);
+        return isNaN(date.getTime()) ? "" : date.toLocaleDateString();
+      },
     },
     {
       field: "merchant",
@@ -271,23 +280,43 @@ export default function Transactions() {
       headerName: "Amount",
       width: 120,
       type: "number",
-      valueFormatter: (params: any) => `$${Math.abs(params.value).toFixed(2)}`,
-      cellClassName: (params: any) =>
-        params.value < 0 ? "amount-negative" : "amount-positive",
+      valueGetter: (params: any) => {
+        if (!params || params.value === null || params.value === undefined) return 0;
+        return parseFloat(params.value);
+      },
+      valueFormatter: (params: any) => {
+        if (!params || params.value === null || params.value === undefined) return "$0.00";
+        return `$${Math.abs(params.value).toFixed(2)}`;
+      },
+      cellClassName: (params: any) => {
+        if (!params || params.value === null || params.value === undefined) return "";
+        return params.value < 0 ? "amount-negative" : "amount-positive";
+      },
     },
     {
       field: "account",
       headerName: "Account",
       width: 120,
-      valueGetter: (params: any) => params.row.account?.name || "Unknown",
-      renderCell: (params: any) => (
-        <Chip
-          label={`${params.row.account?.emoji || "🏦"} ${params.value}`}
-          size="small"
-          variant="outlined"
-          color={params.value === "Amex" ? "error" : "default"}
-        />
-      ),
+      valueGetter: (params: any) => {
+        if (!params.row || !params.row.account) {
+          return "Unknown";
+        }
+        return params.row.account.name || "Unknown";
+      },
+      renderCell: (params: any) => {
+        const account = params.row?.account;
+        const accountName = account?.name || "Unknown";
+        const accountEmoji = account?.emoji || "🏦";
+        
+        return (
+          <Chip
+            label={`${accountEmoji} ${accountName}`}
+            size="small"
+            variant="outlined"
+            color={accountName === "Amex" ? "error" : "default"}
+          />
+        );
+      },
     },
     {
       field: "category",
@@ -296,17 +325,26 @@ export default function Transactions() {
       editable: true,
       type: "singleSelect",
       valueOptions: categories.map((cat) => cat.id),
-      valueGetter: (params: any) => params.row.category?.id || null,
-      renderCell: (params: any) => (
-        <Chip
-          label={`${params.row.category?.emoji || "📂"} ${
-            params.row.category?.name || "Uncategorized"
-          }`}
-          size="small"
-          color="primary"
-          variant="outlined"
-        />
-      ),
+      valueGetter: (params: any) => {
+        if (!params.row || !params.row.category) {
+          return null;
+        }
+        return params.row.category.id || null;
+      },
+      renderCell: (params: any) => {
+        const category = params.row?.category;
+        const categoryName = category?.name || "Uncategorized";
+        const categoryEmoji = category?.emoji || "📂";
+        
+        return (
+          <Chip
+            label={`${categoryEmoji} ${categoryName}`}
+            size="small"
+            color="primary"
+            variant="outlined"
+          />
+        );
+      },
     },
     {
       field: "note",

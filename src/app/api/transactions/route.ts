@@ -25,11 +25,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (category) {
-      where.categoryId = category;
+      where.categoryId = { in: category.split(",") };
     }
 
     if (account) {
-      where.account = { name: account };
+      where.account = { name: { in: account.split(",") } };
     }
 
     if (startDate || endDate) {
