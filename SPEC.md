@@ -169,3 +169,9 @@ All pages accessible from a left nav: Dashboard, Transactions, Budgets, Net Wort
   - List imports + reupload support.
 - [x] **Settings page**:
   - Manage accounts and categories.
+- [x] **Database migration and seeding**:
+  - Created Prisma migration for categories table and account icons.
+  - Updated Prisma schema with proper models and relationships.
+  - Created seed file with default categories, accounts, and budgets.
+  - Successfully migrated and seeded database.
+  - Refactored seed file to eliminate code duplication with reusable helper functions.

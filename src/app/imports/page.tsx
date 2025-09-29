@@ -56,90 +56,17 @@ interface ImportRecord {
   transactionCount: number;
 }
 
-const supportedSources = [
-  {
-    name: "American Express",
-    pattern: "amex",
-    icon: "💳",
-    description: "Credit card transactions",
-  },
-  {
-    name: "Wells Fargo",
-    pattern: "wells",
-    icon: "🏦",
-    description: "Bank account transactions",
-  },
-  {
-    name: "Venmo",
-    pattern: "venmo",
-    icon: "💰",
-    description: "Peer-to-peer payments",
-  },
-  {
-    name: "Vanguard",
-    pattern: "vanguard",
-    icon: "📈",
-    description: "Investment account",
-  },
-  {
-    name: "Target",
-    pattern: "target",
-    icon: "🎯",
-    description: "Target RedCard",
-  },
-  {
-    name: "CIT Bank",
-    pattern: "cit",
-    icon: "🏛️",
-    description: "Savings account",
-  },
-];
-
-const mockImports = [
-  {
-    id: 1,
-    filename: "amex_gold_2024_01.csv",
-    source: "American Express",
-    importedAt: "2024-01-15T10:30:00Z",
-    status: "completed",
-    rowsImported: 45,
-    rowsSkipped: 2,
-    checksum: "abc123def456",
-  },
-  {
-    id: 2,
-    filename: "wells_fargo_checking_2024_01.csv",
-    source: "Wells Fargo",
-    importedAt: "2024-01-14T15:45:00Z",
-    status: "completed",
-    rowsImported: 78,
-    rowsSkipped: 0,
-    checksum: "def456ghi789",
-  },
-  {
-    id: 3,
-    filename: "venmo_export_2024_01.csv",
-    source: "Venmo",
-    importedAt: "2024-01-13T09:20:00Z",
-    status: "completed",
-    rowsImported: 23,
-    rowsSkipped: 1,
-    checksum: "ghi789jkl012",
-  },
-  {
-    id: 4,
-    filename: "vanguard_401k_2024_01.csv",
-    source: "Vanguard",
-    importedAt: "2024-01-12T14:10:00Z",
-    status: "error",
-    rowsImported: 0,
-    rowsSkipped: 0,
-    checksum: "jkl012mno345",
-  },
-];
+interface Account {
+  id: string;
+  name: string;
+  accountType: string;
+  icon: string;
+  createdAt: string;
+}
 
 export default function Imports() {
   const [imports, setImports] = useState<ImportRecord[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -151,7 +78,6 @@ export default function Imports() {
   // Fetch imports list
   const fetchImports = async () => {
     try {
-      setLoading(true);
       const response = await fetch("/api/imports");
       if (!response.ok) throw new Error("Failed to fetch imports");
 
@@ -159,13 +85,29 @@ export default function Imports() {
       setImports(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch imports");
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  // Fetch accounts list
+  const fetchAccounts = async () => {
+    try {
+      const response = await fetch("/api/accounts");
+      if (!response.ok) throw new Error("Failed to fetch accounts");
+
+      const data = await response.json();
+      setAccounts(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch accounts");
     }
   };
 
   useEffect(() => {
-    fetchImports();
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([fetchImports(), fetchAccounts()]);
+      setLoading(false);
+    };
+    loadData();
   }, []);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -278,9 +220,9 @@ export default function Imports() {
           />
           <CardContent>
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-              {supportedSources.map((source) => (
+              {accounts.map((account) => (
                 <Card
-                  key={source.name}
+                  key={account.id}
                   variant="outlined"
                   sx={{
                     minWidth: 200,
@@ -291,13 +233,13 @@ export default function Imports() {
                   }}
                 >
                   <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <Typography variant="h4">{source.icon}</Typography>
+                    <Typography variant="h4">{account.icon}</Typography>
                     <Box>
                       <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                        {source.name}
+                        {account.name}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {source.description}
+                        {account.accountType}
                       </Typography>
                     </Box>
                   </Box>

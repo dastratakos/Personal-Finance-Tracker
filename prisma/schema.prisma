@@ -25,7 +25,7 @@ model Transaction {
   
   // Relations
   account         Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  import          Import?  @relation(fields: [importId], references: [id], onDelete: SetNull)
+  import          Import?  @relation(fields: [importId], references: [id], onDelete: Cascade)
   
   @@map("transactions")
 }
@@ -45,11 +45,14 @@ model Import {
 
 model Budget {
   id          String   @id @default(cuid())
-  category    String
+  categoryId  String
   amount      Decimal
   startDate   DateTime
   endDate     DateTime?   // null = indefinite
   createdAt   DateTime @default(now())
+  
+  // Relations
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   
   @@map("budgets")
 }
@@ -57,11 +60,23 @@ model Budget {
 model Account {
   id          String   @id @default(cuid())
   name        String                                 // e.g. "Amex", "Wells Fargo"
-  accountType String?                                // "bank", "credit_card", "investment", "venmo"
+  accountType String                                 // "Bank", "Credit Card", "Investment", "Venmo"
+  icon        String                                 // Emoji for the account
   createdAt   DateTime @default(now())
   
   // Relations
   transactions Transaction[]
   
   @@map("accounts")
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  budgets     Budget[]
+  
+  @@map("categories")
 }
