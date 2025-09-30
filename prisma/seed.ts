@@ -40,7 +40,7 @@ async function createAccounts() {
       id: "amex_gold",
       name: "Amex Gold",
       accountType: "Credit Card",
-      emoji: "💳",
+      emoji: "🏆",
     },
     {
       id: "bilt_mastercard",
