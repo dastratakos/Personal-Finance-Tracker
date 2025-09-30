@@ -63,11 +63,6 @@ export const theme = createTheme({
           backgroundColor: "#1a1a1a",
           border: "1px solid #333333",
           boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
-          "&:hover": {
-            boxShadow: "0 8px 30px rgba(0, 0, 0, 0.4)",
-            transform: "translateY(-2px)",
-            transition: "all 0.3s ease",
-          },
         },
       },
     },
